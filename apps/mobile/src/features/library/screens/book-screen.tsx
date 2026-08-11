@@ -95,7 +95,6 @@ export function BookScreen({ id }: { id: string }) {
         />
       </View>
       <SectionEditor
-        editable={book.format === "pdf"}
         onChange={updateSection}
         onMove={(sectionId, direction) =>
           updateBook(book.id, {
@@ -105,21 +104,52 @@ export function BookScreen({ id }: { id: string }) {
         sections={book.sections}
       />
 
+      <BookActions
+        exportedUri={book.exportedUri}
+        format={book.format}
+        onDelete={confirmDelete}
+        onExport={() => void exportBook(book.id)}
+      />
+    </ScrollView>
+  );
+}
+
+function BookActions({
+  exportedUri,
+  format,
+  onDelete,
+  onExport,
+}: {
+  exportedUri: string | undefined;
+  format: "epub" | "pdf";
+  onDelete: () => void;
+  onExport: () => void;
+}) {
+  const label = exportLabel(format);
+  return (
+    <>
       <Pressable
+        accessibilityLabel={label}
+        accessibilityRole="button"
         className="bg-primary mt-8 h-12 items-center justify-center rounded-full active:opacity-75"
-        onPress={() => void exportBook(book.id)}
+        onPress={onExport}
       >
         <Text className="text-primary-foreground text-[15px] font-semibold">
-          {exportLabel(book.format)}
+          {label}
         </Text>
       </Pressable>
       <Text className="text-muted-foreground mt-3 text-center text-xs">
-        {exportCaption(book.exportedUri)}
+        {exportCaption(exportedUri)}
       </Text>
-      <Pressable className="mt-9 items-center py-3" onPress={confirmDelete}>
+      <Pressable
+        accessibilityLabel="Remove from Worm"
+        accessibilityRole="button"
+        className="mt-9 items-center py-3"
+        onPress={onDelete}
+      >
         <Text className="text-accent text-[15px]">Remove from Worm</Text>
       </Pressable>
-    </ScrollView>
+    </>
   );
 }
 
@@ -166,11 +196,11 @@ function AddRangeButton({
 }
 
 function exportLabel(format: "epub" | "pdf") {
-  return format === "pdf" ? "Export clean PDF" : "Share original EPUB";
+  return format === "pdf" ? "Export clean PDF" : "Export clean EPUB";
 }
 
 function structureTitle(format: "epub" | "pdf") {
-  return format === "pdf" ? "Reading order" : "Detected chapters";
+  return format === "pdf" ? "Reading order" : "Chapter order";
 }
 
 function exportCaption(exportedUri: string | undefined) {

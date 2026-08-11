@@ -6,7 +6,7 @@ import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 
 import type { BookRecord } from "@worm/ebook-core";
-import { buildPdfEdition } from "@worm/ebook-core";
+import { buildEpubEdition, buildPdfEdition } from "@worm/ebook-core";
 
 import {
   deleteBookFiles,
@@ -82,19 +82,20 @@ async function exportBook(id: string) {
   if (!book) return;
   try {
     const source = getSourceFile(book);
-    let shareUri = source.uri;
-    if (book.format === "pdf") {
-      shareUri = await writePdfEdition(book, source);
-      updateBook(id, { exportedUri: shareUri });
-    }
+    const shareUri = await writeEdition(book, source);
+    updateBook(id, { exportedUri: shareUri });
     if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(shareUri);
   } catch (error) {
     Alert.alert("Couldn’t export that book", errorMessage(error));
   }
 }
 
-async function writePdfEdition(book: BookRecord, source: File) {
-  const bytes = await buildPdfEdition(await source.bytes(), book.sections);
+async function writeEdition(book: BookRecord, source: File) {
+  const sourceBytes = await source.bytes();
+  const bytes =
+    book.format === "pdf"
+      ? await buildPdfEdition(sourceBytes, book.sections)
+      : await buildEpubEdition(sourceBytes, book);
   const destination = editionDestination(book);
   if (destination.exists) destination.delete();
   destination.create();

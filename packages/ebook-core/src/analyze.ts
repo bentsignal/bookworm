@@ -108,6 +108,9 @@ async function readNavigationTitles(
   const navPath = normalizeHref(rootFile, navigationItem["@_href"]);
   const navigation = await archive.file(navPath)?.async("string");
   if (!navigation) return titles;
+  if (navigationItem["@_media-type"] === "application/x-dtbncx+xml") {
+    return readNcxTitles(navigation, navPath);
+  }
   for (const match of navigation.matchAll(
     /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/giu,
   )) {
@@ -115,6 +118,22 @@ async function readNavigationTitles(
     const label = match[2];
     if (!href || !label) continue;
     titles.set(stripFragment(normalizeHref(navPath, href)), stripMarkup(label));
+  }
+  return titles;
+}
+
+function readNcxTitles(navigation: string, navigationPath: string) {
+  const titles = new Map<string, string>();
+  const pointPattern =
+    /<(?:[\w.-]+:)?navLabel\b[^>]*>[\s\S]*?<(?:[\w.-]+:)?text\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?text\s*>[\s\S]*?<\/(?:[\w.-]+:)?navLabel\s*>[\s\S]*?<(?:[\w.-]+:)?content\b[^>]*\bsrc=["']([^"']+)["'][^>]*\/?\s*>/giu;
+  for (const match of navigation.matchAll(pointPattern)) {
+    const label = match[1];
+    const href = match[2];
+    if (!label || !href) continue;
+    titles.set(
+      stripFragment(normalizeHref(navigationPath, href)),
+      stripMarkup(label),
+    );
   }
   return titles;
 }
@@ -155,10 +174,33 @@ function stripFragment(href: string) {
 }
 
 function stripMarkup(value: string) {
+  return decodeXmlEntities(
+    value
+      .replaceAll(/<[^>]+>/gu, " ")
+      .replaceAll(/\s+/gu, " ")
+      .trim(),
+  );
+}
+
+function decodeXmlEntities(value: string) {
+  const named = new Map([
+    ["&amp;", "&"],
+    ["&apos;", "'"],
+    ["&gt;", ">"],
+    ["&lt;", "<"],
+    ["&quot;", '"'],
+  ]);
   return value
-    .replaceAll(/<[^>]+>/gu, " ")
-    .replaceAll(/\s+/gu, " ")
-    .trim();
+    .replaceAll(
+      /&(amp|apos|gt|lt|quot);/gu,
+      (entity) => named.get(entity) ?? entity,
+    )
+    .replaceAll(/&#(\d+);/gu, (_entity, codePoint: string) => {
+      return String.fromCodePoint(Number.parseInt(codePoint, 10));
+    })
+    .replaceAll(/&#x([\da-f]+);/giu, (_entity, codePoint: string) => {
+      return String.fromCodePoint(Number.parseInt(codePoint, 16));
+    });
 }
 
 function fallbackEpubSection() {

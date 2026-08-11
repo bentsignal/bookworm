@@ -1,4 +1,5 @@
 export { analyzeBook } from "./analyze";
+export { buildEpubEdition } from "./epub-export";
 export { buildPdfEdition } from "./export";
 export {
   createEditionFileName,

@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from "react-native";
-import { Link, Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 
 import { useLibrary } from "../library-context";
 
@@ -19,6 +19,7 @@ function WorkbenchContent({
 }: {
   projects: ReturnType<typeof useLibrary>["books"];
 }) {
+  const router = useRouter();
   if (projects.length === 0) {
     return (
       <View className="flex-1 items-center justify-center pb-28">
@@ -34,26 +35,33 @@ function WorkbenchContent({
   return (
     <View className="border-border overflow-hidden rounded-2xl border">
       {projects.map((book, index) => (
-        <Link href={`/(tabs)/(library)/book/${book.id}`} asChild key={book.id}>
-          <Pressable
-            className={`bg-card px-4 py-4 active:opacity-70 ${index > 0 ? "border-border border-t" : ""}`}
-          >
-            <View className="flex-row items-center justify-between gap-4">
-              <View className="min-w-0 flex-1">
-                <Text
-                  className="text-foreground text-[16px] font-semibold"
-                  numberOfLines={1}
-                >
-                  {book.title}
-                </Text>
-                <Text className="text-muted-foreground mt-1 text-sm">
-                  {book.pageCount ?? 0} pages · {book.sections.length} ranges
-                </Text>
-              </View>
-              <Text className="text-primary text-xl">›</Text>
+        <Pressable
+          accessibilityLabel={`Open ${book.title}`}
+          accessibilityRole="button"
+          className={`bg-card px-4 py-4 active:opacity-70 ${index > 0 ? "border-border border-t" : ""}`}
+          key={book.id}
+          onPress={() =>
+            router.push({
+              pathname: "/(tabs)/(library)/book/[id]",
+              params: { id: book.id },
+            })
+          }
+        >
+          <View className="flex-row items-center justify-between gap-4">
+            <View className="min-w-0 flex-1">
+              <Text
+                className="text-foreground text-[16px] font-semibold"
+                numberOfLines={1}
+              >
+                {book.title}
+              </Text>
+              <Text className="text-muted-foreground mt-1 text-sm">
+                {book.pageCount ?? 0} pages · {book.sections.length} ranges
+              </Text>
             </View>
-          </Pressable>
-        </Link>
+            <Text className="text-primary text-xl">›</Text>
+          </View>
+        </Pressable>
       ))}
     </View>
   );

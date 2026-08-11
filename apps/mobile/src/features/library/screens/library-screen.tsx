@@ -1,5 +1,5 @@
 import { FlatList, Pressable, Text, View } from "react-native";
-import { Link, Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 
 import type { BookRecord } from "@worm/ebook-core";
 
@@ -62,24 +62,34 @@ function LibraryContent({
 }
 
 function BookTile({ book }: { book: BookRecord }) {
+  const router = useRouter();
   return (
-    <Link href={`/(tabs)/(library)/book/${book.id}`} asChild>
-      <Pressable className="min-w-0 flex-1 active:opacity-70">
-        <BookCover book={book} />
-        <Text
-          className="text-foreground mt-3 text-[15px] font-semibold"
-          numberOfLines={1}
-        >
-          {book.title}
-        </Text>
-        <Text
-          className="text-muted-foreground mt-0.5 text-[13px]"
-          numberOfLines={1}
-        >
-          {book.author ?? `${book.sections.length} sections`}
-        </Text>
-      </Pressable>
-    </Link>
+    <Pressable
+      accessibilityLabel={`${book.title}, ${book.author ?? book.format}`}
+      accessibilityRole="button"
+      className="min-w-0 active:opacity-70"
+      onPress={() =>
+        router.push({
+          pathname: "/(tabs)/(library)/book/[id]",
+          params: { id: book.id },
+        })
+      }
+      style={{ width: "47%" }}
+    >
+      <BookCover book={book} />
+      <Text
+        className="text-foreground mt-3 text-[15px] font-semibold"
+        numberOfLines={1}
+      >
+        {book.title}
+      </Text>
+      <Text
+        className="text-muted-foreground mt-0.5 text-[13px]"
+        numberOfLines={1}
+      >
+        {book.author ?? `${book.sections.length} sections`}
+      </Text>
+    </Pressable>
   );
 }
 

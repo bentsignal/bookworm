@@ -1,9 +1,8 @@
 # Worm
 
-Worm is a calm, local-first workshop for a personal ebook library. Import and
-catalog EPUB and PDF files, rebuild PDF reading order, and export clean copies
-for an e-reader. EPUB structure inspection and original-file sharing are in the
-first release; EPUB rewriting is the next format milestone.
+Worm is a calm, local-first workshop for a personal ebook library. Import EPUB
+and PDF files, rebuild their reading order, and export clean copies for an
+e-reader.
 
 The first client is an Expo React Native app for iPhone. Book-format logic lives
 outside the app where possible so Android, web, and desktop clients can follow.
