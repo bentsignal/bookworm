@@ -1,0 +1,42 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".cache/tsbuildinfo.json", "dist/**"]
+    },
+    "dev": {
+      "dependsOn": ["^dev"],
+      "cache": false,
+      "persistent": false
+    },
+    "format": {
+      "outputs": [".cache/.prettiercache"],
+      "outputLogs": "new-only"
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "outputs": [".cache/.eslintcache"]
+    },
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": [".cache/tsbuildinfo.json"]
+    },
+    "clean": {
+      "cache": false
+    }
+  },
+  "globalPassThroughEnv": [
+    "NODE_ENV",
+    "CI",
+    "npm_lifecycle_event",
+    "PORT",
+    "HOST",
+    "PORTLESS_URL",
+    "NODE_EXTRA_CA_CERTS"
+  ]
+}

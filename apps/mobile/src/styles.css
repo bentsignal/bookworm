@@ -1,0 +1,45 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "uniwind";
+
+:root {
+  @variant light {
+    --background: #f4f0e6;
+    --foreground: #17211d;
+    --card: #fbf8f0;
+    --muted: #e9e3d6;
+    --muted-foreground: #6e716b;
+    --border: #d9d1c1;
+    --primary: #0d4a38;
+    --primary-foreground: #fffaf0;
+    --accent: #e64b2e;
+    --shadow: #25352f;
+  }
+
+  @variant dark {
+    --background: #0d1713;
+    --foreground: #f0eee7;
+    --card: #16231e;
+    --muted: #22322c;
+    --muted-foreground: #a8aea9;
+    --border: #34473f;
+    --primary: #71b49b;
+    --primary-foreground: #071510;
+    --accent: #ff7356;
+    --shadow: #000000;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-shadow: var(--shadow);
+}
