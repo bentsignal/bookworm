@@ -18,18 +18,18 @@ export function SettingsScreen() {
               Files access
             </Text>
             <Text className="text-muted-foreground mt-1 text-sm leading-5">
-              On My iPhone › Worm › Library
+              On My iPhone › bookworm › Library
             </Text>
           </View>
           <View className="bg-primary h-2.5 w-2.5 rounded-full" />
         </View>
       </View>
       <Text className="text-muted-foreground mt-3 px-1 text-sm leading-5">
-        Originals and generated editions stay visible in Files. Worm never
+        Originals and generated editions stay visible in Files. bookworm never
         overwrites an original.
       </Text>
       <Text className="text-muted-foreground mt-10 text-center text-xs">
-        Worm 0.1.0
+        bookworm 0.1.0
       </Text>
     </ScrollView>
   );

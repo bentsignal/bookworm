@@ -1,6 +1,8 @@
-import { Text, View } from "react-native";
+import { Image, Text, View } from "react-native";
 
 import type { BookRecord } from "@worm/ebook-core";
+
+import { getCoverFile } from "../library-storage";
 
 const palettes = [
   ["#123e31", "#f3ead8", "#ef5b3f"],
@@ -19,6 +21,21 @@ export function BookCover({
   const palette = palettes[hash(book.id) % palettes.length] ?? palettes[0];
   const [background, foreground, accent] = palette;
   const metrics = getMetrics(large);
+  const cover = getCoverFile(book);
+  if (cover?.exists) {
+    return (
+      <Image
+        accessibilityLabel={`${book.title} cover`}
+        resizeMode="cover"
+        source={{ uri: cover.uri }}
+        style={{
+          aspectRatio: 0.68,
+          borderRadius: 5,
+          width: large ? 176 : "100%",
+        }}
+      />
+    );
+  }
   return (
     <View
       className="overflow-hidden rounded-[5px]"

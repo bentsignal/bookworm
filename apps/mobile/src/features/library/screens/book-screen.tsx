@@ -16,7 +16,6 @@ import { BookCover } from "../components/book-cover";
 import { SectionEditor } from "../components/section-editor";
 import { SectionOrganizer } from "../components/section-organizer";
 import { useLibrary } from "../library-context";
-import { parsePageRange } from "../page-range";
 
 export function BookScreen({ id }: { id: string }) {
   const { books } = useLibrary();
@@ -33,16 +32,14 @@ export function BookScreen({ id }: { id: string }) {
 
 function BookEditor({ book }: { book: BookRecord }) {
   const router = useRouter();
-  const { convertPdfToEpub, deleteBook, exportBook, updateBook } = useLibrary();
+  const {
+    convertPdfToEpub,
+    deleteBook,
+    exportBook,
+    replaceBookCover,
+    updateBook,
+  } = useLibrary();
   const [isConverting, setIsConverting] = useState(false);
-
-  function updateSection(section: BookSection) {
-    updateBook(book.id, {
-      sections: book.sections.map((item) =>
-        item.id === section.id ? section : item,
-      ),
-    });
-  }
 
   return (
     <ScrollView
@@ -51,57 +48,20 @@ function BookEditor({ book }: { book: BookRecord }) {
       keyboardDismissMode="interactive"
     >
       <Stack.Screen options={{ title: book.title }} />
-      <View className="items-center">
-        <BookCover book={book} large />
-      </View>
-      <ReadButton
-        format={book.format}
-        onPress={() =>
+      <BookDetails
+        book={book}
+        onChange={(update) => updateBook(book.id, update)}
+        onChangeCover={() => void replaceBookCover(book.id)}
+        onRead={() =>
           router.push({
             pathname: "/(tabs)/(library)/book/[id]/read",
             params: { id: book.id },
           })
         }
       />
-      <View className="mt-8 gap-4">
-        <Field
-          label="Title"
-          value={book.title}
-          onChange={(title) => updateBook(book.id, { title })}
-        />
-        <Field
-          label="Author"
-          value={book.author ?? ""}
-          onChange={(author) => updateBook(book.id, { author })}
-        />
-      </View>
-
-      <View className="mt-9 mb-3 flex-row items-end justify-between">
-        <View>
-          <Text className="text-foreground font-serif text-2xl">
-            {structureTitle(book.format)}
-          </Text>
-          <Text className="text-muted-foreground mt-1 text-sm">
-            {sectionCountLabel(book.sections.length)}
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-5">
-          <AddRangeButton
-            book={book}
-            onAdd={(sections) => updateBook(book.id, { sections })}
-          />
-          <SectionOrganizer
-            onChange={(sections) => updateBook(book.id, { sections })}
-            sections={book.sections}
-          />
-        </View>
-      </View>
-      <SectionEditor
-        onChange={updateSection}
-        onEditRange={(section) =>
-          promptToEditSectionRange(book.pageCount ?? 1, section, updateSection)
-        }
-        sections={book.sections}
+      <BookStructure
+        book={book}
+        onChange={(sections) => updateBook(book.id, { sections })}
       />
 
       <BookActions
@@ -117,6 +77,106 @@ function BookEditor({ book }: { book: BookRecord }) {
         onExport={() => void exportBook(book.id)}
       />
     </ScrollView>
+  );
+}
+
+function BookDetails({
+  book,
+  onChange,
+  onChangeCover,
+  onRead,
+}: {
+  book: BookRecord;
+  onChange: (update: Partial<BookRecord>) => void;
+  onChangeCover: () => void;
+  onRead: () => void;
+}) {
+  return (
+    <>
+      <Pressable
+        accessibilityLabel="Change book cover"
+        accessibilityRole="button"
+        className="items-center"
+        onPress={onChangeCover}
+      >
+        <BookCover book={book} large />
+        <Text className="text-primary mt-3 text-sm font-semibold">
+          Change cover
+        </Text>
+      </Pressable>
+      <ReadButton format={book.format} onPress={onRead} />
+      <View className="mt-8 gap-4">
+        <Field
+          label="Title"
+          value={book.title}
+          onChange={(title) => onChange({ title })}
+        />
+        <Field
+          label="Author"
+          value={book.author ?? ""}
+          onChange={(author) => onChange({ author })}
+        />
+      </View>
+    </>
+  );
+}
+
+function BookStructure({
+  book,
+  onChange,
+}: {
+  book: BookRecord;
+  onChange: (sections: BookSection[]) => void;
+}) {
+  const router = useRouter();
+  function editSection(section: BookSection) {
+    router.push({
+      pathname: "/(tabs)/(library)/book/[id]/section/[sectionId]",
+      params: { id: book.id, sectionId: section.id },
+    });
+  }
+  function addSection() {
+    const section = createSection(book);
+    onChange([...book.sections, section]);
+    editSection(section);
+  }
+  return (
+    <>
+      <View className="mt-9 mb-3 flex-row items-end justify-between">
+        <View>
+          <Text className="text-foreground font-serif text-2xl">
+            {structureTitle(book.format)}
+          </Text>
+          <Text className="text-muted-foreground mt-1 text-sm">
+            {sectionCountLabel(book.sections.length)}
+          </Text>
+        </View>
+        <View className="flex-row items-center gap-5">
+          <Pressable accessibilityRole="button" onPress={addSection}>
+            <Text className="text-primary text-[15px] font-semibold">
+              Add chapter
+            </Text>
+          </Pressable>
+          <SectionOrganizer onChange={onChange} sections={book.sections} />
+        </View>
+      </View>
+      <SectionEditor
+        format={book.format}
+        locations={book.epubLocations}
+        onDelete={(section) => confirmDeleteSection(book, section, onChange)}
+        onEdit={editSection}
+        onToggleIncluded={(section) =>
+          onChange(
+            book.sections.map((item) =>
+              item.id === section.id
+                ? { ...item, included: !item.included }
+                : item,
+            ),
+          )
+        }
+        sections={book.sections}
+      />
+    </>
   );
 }
 
@@ -143,31 +203,71 @@ function Field({
   );
 }
 
-function AddRangeButton({
-  book,
-  onAdd,
-}: {
-  book: ReturnType<typeof useLibrary>["books"][number];
-  onAdd: (sections: BookSection[]) => void;
-}) {
-  if (book.format !== "pdf") return null;
-  return (
-    <Pressable
-      onPress={() =>
-        promptForSection(book.pageCount ?? 1, book.sections, onAdd)
-      }
-    >
-      <Text className="text-primary text-[15px] font-semibold">Add range</Text>
-    </Pressable>
-  );
-}
-
 function structureTitle(format: "epub" | "pdf") {
   return format === "pdf" ? "Reading order" : "Chapter order";
 }
 
 function sectionCountLabel(count: number) {
-  return `${count} ${count === 1 ? "section" : "sections"}`;
+  return `${count} ${count === 1 ? "chapter" : "chapters"}`;
+}
+
+function createSection(book: BookRecord) {
+  const id = `section-${Date.now()}`;
+  return book.format === "pdf"
+    ? createPdfSection(book, id)
+    : createEpubSection(book, id);
+}
+
+function createPdfSection(book: BookRecord, id: string) {
+  const previous = book.sections.at(-1);
+  const page = Math.min(
+    book.pageCount ?? 1,
+    (previous?.endPage ?? previous?.startPage ?? 0) + 1,
+  );
+  return {
+    id,
+    title: `Chapter ${book.sections.length + 1}`,
+    included: true,
+    startPage: page,
+    endPage: page,
+  };
+}
+
+function createEpubSection(book: BookRecord, id: string) {
+  const previous = book.sections.at(-1);
+  const maximum = Math.max(0, (book.epubLocations?.length ?? 1) - 1);
+  const location = Math.min(
+    maximum,
+    (previous?.endLocation ?? previous?.startLocation ?? -1) + 1,
+  );
+  return {
+    id,
+    title: `Chapter ${book.sections.length + 1}`,
+    included: true,
+    href: book.epubLocations?.[location]?.href,
+    startLocation: location,
+    endLocation: location,
+  };
+}
+
+function confirmDeleteSection(
+  book: BookRecord,
+  section: BookSection,
+  onDelete: (sections: BookSection[]) => void,
+) {
+  if (book.sections.length === 1) {
+    Alert.alert("Keep one chapter", "A book needs at least one chapter.");
+    return;
+  }
+  Alert.alert("Delete this chapter?", section.title, [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "Delete",
+      style: "destructive",
+      onPress: () =>
+        onDelete(book.sections.filter((item) => item.id !== section.id)),
+    },
+  ]);
 }
 
 function confirmDelete(
@@ -177,7 +277,7 @@ function confirmDelete(
 ) {
   Alert.alert(
     "Remove this book?",
-    "Its Worm copy and generated editions will be deleted.",
+    "Its bookworm copy and generated editions will be deleted.",
     [
       { text: "Cancel", style: "cancel" },
       {
@@ -189,64 +289,5 @@ function confirmDelete(
         },
       },
     ],
-  );
-}
-
-function promptForSection(
-  pageCount: number,
-  sections: BookSection[],
-  onAdd: (sections: BookSection[]) => void,
-) {
-  promptForPageRange("Add page range", pageCount, undefined, (range) => {
-    onAdd([
-      ...sections,
-      {
-        id: `section-${Date.now()}`,
-        title: `Pages ${range.start}–${range.end}`,
-        included: true,
-        startPage: range.start,
-        endPage: range.end,
-      },
-    ]);
-  });
-}
-
-function promptToEditSectionRange(
-  pageCount: number,
-  section: BookSection,
-  onChange: (section: BookSection) => void,
-) {
-  const currentRange =
-    section.startPage === undefined || section.endPage === undefined
-      ? undefined
-      : `${section.startPage}–${section.endPage}`;
-  promptForPageRange("Edit page range", pageCount, currentRange, (range) => {
-    onChange({ ...section, startPage: range.start, endPage: range.end });
-  });
-}
-
-function promptForPageRange(
-  title: string,
-  pageCount: number,
-  defaultValue: string | undefined,
-  onChange: (range: { start: number; end: number }) => void,
-) {
-  Alert.prompt(
-    title,
-    `Enter a range between 1 and ${pageCount}, such as 12–28.`,
-    (value) => {
-      const range = parsePageRange(value, pageCount);
-      if (!range) {
-        Alert.alert(
-          "Invalid range",
-          `Use two page numbers between 1 and ${pageCount}.`,
-        );
-        return;
-      }
-      onChange(range);
-    },
-    "plain-text",
-    defaultValue,
-    "numbers-and-punctuation",
   );
 }

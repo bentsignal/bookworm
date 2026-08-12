@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { WebView } from "react-native-webview";
 import { File } from "expo-file-system";
 import { Stack } from "expo-router";
 
 import type { BookRecord } from "@worm/ebook-core";
-import { buildEpubReaderHtml } from "@worm/ebook-core";
+import { buildEpubSectionHtml } from "@worm/ebook-core";
 
 import { useColor } from "~/hooks/use-color";
 import { getPdfPageCountAsync, WormPdfView } from "~/native/worm-pdf";
@@ -42,6 +42,7 @@ function PdfReader({ book }: { book: BookRecord }) {
   const sourceUri = getSourceFile(book).uri;
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string>();
+  const [pageNumber, setPageNumber] = useState(1);
 
   // eslint-disable-next-line no-restricted-syntax -- PDFKit is an external native reader that must validate a new source URL before its view mounts.
   useEffect(() => {
@@ -60,7 +61,18 @@ function PdfReader({ book }: { book: BookRecord }) {
 
   if (error) return <ReaderError format="PDF" message={error} />;
   if (!isReady) return <ReaderLoading color={primary} />;
-  return <WormPdfView sourceUri={sourceUri} style={{ flex: 1 }} />;
+  return (
+    <View className="flex-1">
+      <WormPdfView
+        onPageChange={({ nativeEvent }) =>
+          setPageNumber(nativeEvent.pageNumber)
+        }
+        sourceUri={sourceUri}
+        style={{ flex: 1 }}
+      />
+      <ReaderPosition label={`Page ${pageNumber} of ${book.pageCount ?? 1}`} />
+    </View>
+  );
 }
 
 function EpubReader({ book }: { book: BookRecord }) {
@@ -69,23 +81,29 @@ function EpubReader({ book }: { book: BookRecord }) {
   const muted = useColor("border");
   const primary = useColor("primary");
   const sourceUri = getSourceFile(book).uri;
-  const [html, setHtml] = useState<string>();
+  const [document, setDocument] = useState({ key: "", html: "" });
   const [error, setError] = useState<string>();
+  const [sectionIndex, setSectionIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const sections = book.sections.filter((section) => section.included);
+  const section = sections[sectionIndex];
+  const documentKey = `${section?.id ?? "none"}:${background}`;
 
   // eslint-disable-next-line no-restricted-syntax -- EPUB bytes are loaded from the external document store when this reader mounts or its source changes.
   useEffect(() => {
     let cancelled = false;
+    if (!section) return;
     void new File(sourceUri)
       .bytes()
       .then((bytes) =>
-        buildEpubReaderHtml(bytes, book.sections, {
+        buildEpubSectionHtml(bytes, section, book.epubLocations ?? [], {
           background,
           foreground,
           muted,
         }),
       )
       .then((contents) => {
-        if (!cancelled) setHtml(contents);
+        if (!cancelled) setDocument({ key: documentKey, html: contents });
       })
       .catch((reason: unknown) => {
         if (!cancelled) setError(errorMessage(reason));
@@ -93,24 +111,141 @@ function EpubReader({ book }: { book: BookRecord }) {
     return () => {
       cancelled = true;
     };
-  }, [background, book.sections, foreground, muted, sourceUri]);
+  }, [
+    background,
+    book.epubLocations,
+    documentKey,
+    foreground,
+    muted,
+    section,
+    sourceUri,
+  ]);
 
   if (error) return <ReaderError format="EPUB" message={error} />;
-  if (!html) return <ReaderLoading color={primary} />;
+  if (!section) {
+    return <ReaderError format="EPUB" message="No chapters are included." />;
+  }
+  if (document.key !== documentKey) return <ReaderLoading color={primary} />;
   return (
-    <WebView
-      allowFileAccess={false}
-      allowsLinkPreview={false}
-      containerStyle={{ backgroundColor: background }}
-      javaScriptEnabled={false}
-      onShouldStartLoadWithRequest={({ url }) => url.startsWith("about:blank")}
-      originWhitelist={["about:blank"]}
-      setSupportMultipleWindows={false}
-      source={{ html }}
-      style={{ backgroundColor: background }}
-      textInteractionEnabled
-    />
+    <View className="flex-1">
+      <WebView
+        allowFileAccess={false}
+        allowsLinkPreview={false}
+        bounces
+        containerStyle={{ backgroundColor: background }}
+        decelerationRate="normal"
+        javaScriptEnabled={false}
+        onScroll={({ nativeEvent }) => {
+          const maximum =
+            nativeEvent.contentSize.height -
+            nativeEvent.layoutMeasurement.height;
+          setProgress(
+            maximum <= 0
+              ? 100
+              : Math.round((nativeEvent.contentOffset.y / maximum) * 100),
+          );
+        }}
+        onShouldStartLoadWithRequest={({ url }) =>
+          url.startsWith("about:blank")
+        }
+        originWhitelist={["about:blank"]}
+        scrollEventThrottle={100}
+        setSupportMultipleWindows={false}
+        source={{ html: document.html }}
+        style={{ backgroundColor: background }}
+        textInteractionEnabled
+      />
+      <EpubReaderBar
+        count={sections.length}
+        index={sectionIndex}
+        onChange={(index) => {
+          setProgress(0);
+          setSectionIndex(index);
+        }}
+        progress={progress}
+        title={section.title}
+      />
+    </View>
   );
+}
+
+function EpubReaderBar({
+  count,
+  index,
+  onChange,
+  progress,
+  title,
+}: {
+  count: number;
+  index: number;
+  onChange: (index: number) => void;
+  progress: number;
+  title: string;
+}) {
+  return (
+    <View className="border-border bg-card absolute right-4 bottom-4 left-4 flex-row items-center rounded-2xl border px-2 py-2 shadow-sm">
+      <ReaderNavigationButton
+        disabled={index === 0}
+        label="Previous chapter"
+        onPress={() => onChange(index - 1)}
+        symbol="‹"
+      />
+      <View className="min-w-0 flex-1 items-center px-2">
+        <Text
+          className="text-foreground text-xs font-semibold"
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+        <Text className="text-muted-foreground mt-0.5 text-[10px]">
+          Chapter {index + 1} of {count} · {clamp(progress)}%
+        </Text>
+      </View>
+      <ReaderNavigationButton
+        disabled={index === count - 1}
+        label="Next chapter"
+        onPress={() => onChange(index + 1)}
+        symbol="›"
+      />
+    </View>
+  );
+}
+
+function ReaderNavigationButton({
+  disabled,
+  label,
+  onPress,
+  symbol,
+}: {
+  disabled: boolean;
+  label: string;
+  onPress: () => void;
+  symbol: string;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      className="h-10 w-10 items-center justify-center"
+      disabled={disabled}
+      onPress={onPress}
+      style={{ opacity: disabled ? 0.25 : 1 }}
+    >
+      <Text className="text-primary text-3xl leading-8">{symbol}</Text>
+    </Pressable>
+  );
+}
+
+function ReaderPosition({ label }: { label: string }) {
+  return (
+    <View className="bg-card/95 border-border absolute bottom-5 self-center rounded-full border px-4 py-2">
+      <Text className="text-foreground text-xs font-semibold">{label}</Text>
+    </View>
+  );
+}
+
+function clamp(value: number) {
+  return Math.max(0, Math.min(100, value));
 }
 
 function ReaderLoading({ color }: { color: string }) {

@@ -1,6 +1,12 @@
 export { analyzeBook } from "./analyze";
 export { buildEpubEdition } from "./epub-export";
-export { buildEpubReaderHtml } from "./epub-reader";
+export {
+  buildEpubLocationHtml,
+  buildEpubReaderHtml,
+  buildEpubSectionHtml,
+} from "./epub-reader";
+export { extractEpubCover } from "./epub-cover";
+export { sectionLocationRange } from "./epub-content";
 export { buildPdfEdition } from "./export";
 export { buildEpubFromPdf } from "./pdf-to-epub";
 export {
@@ -16,4 +22,5 @@ export type {
   BookFormat,
   BookRecord,
   BookSection,
+  EpubLocation,
 } from "./model";

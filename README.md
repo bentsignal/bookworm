@@ -1,6 +1,6 @@
-# Worm
+# bookworm
 
-Worm is a calm, local-first workshop for a personal ebook library. Import EPUB
+bookworm is a calm, local-first workshop for a personal ebook library. Import EPUB
 and PDF files, rebuild their reading order, and export clean copies for an
 e-reader.
 
@@ -20,6 +20,6 @@ Metro runs through the stable Portless origin `https://mobile.worm.local`.
 
 ## File ownership
 
-Worm is local-first. On iOS, its Documents directory is exposed in Files as the
-Worm folder. Imported originals live under `Library/<book-id>/` and are never
+bookworm is local-first. On iOS, its Documents directory is exposed in Files as the
+bookworm folder. Imported originals live under `Library/<book-id>/` and are never
 overwritten; generated editions are written alongside them as new files.

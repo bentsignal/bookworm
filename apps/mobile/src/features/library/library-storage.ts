@@ -1,7 +1,11 @@
 import { Directory, File, Paths } from "expo-file-system";
 
 import type { BookRecord } from "@worm/ebook-core";
-import { analyzeBook, createEditionFileName } from "@worm/ebook-core";
+import {
+  analyzeBook,
+  createEditionFileName,
+  extractEpubCover,
+} from "@worm/ebook-core";
 
 const libraryDirectory = new Directory(Paths.document, "Library");
 const catalogFile = new File(libraryDirectory, "library.json");
@@ -25,11 +29,16 @@ export async function importBook(source: File, id: string) {
   bookDirectory.create({ idempotent: true, intermediates: true });
   const destination = new File(bookDirectory, safeFileName(source.name));
   await source.copy(destination, { overwrite: false });
+  const coverFileName =
+    analysis.format === "epub"
+      ? await writeExtractedEpubCover(bookDirectory, bytes)
+      : undefined;
   const now = new Date().toISOString();
   return {
     ...analysis,
     id,
     sourceFileName: destination.name,
+    coverFileName,
     importedAt: now,
     modifiedAt: now,
     fileSize: destination.size,
@@ -67,12 +76,66 @@ export function getSourceFile(book: BookRecord) {
   return new File(libraryDirectory, book.id, book.sourceFileName);
 }
 
+export function getCoverFile(book: BookRecord) {
+  if (!book.coverFileName) return undefined;
+  return new File(libraryDirectory, book.id, book.coverFileName);
+}
+
+export function coverDestination(book: BookRecord, extension: string) {
+  return new File(
+    libraryDirectory,
+    book.id,
+    `cover.${extension.replaceAll(/[^a-z0-9]/giu, "").toLowerCase() || "jpg"}`,
+  );
+}
+
+export async function refreshEpubMetadata(book: BookRecord) {
+  if (book.format !== "epub") return book;
+  const refreshStructure =
+    !book.epubLocations ||
+    book.epubLocations.some(
+      (location) =>
+        location.startOffset === undefined || location.endOffset === undefined,
+    );
+  const bytes = await getSourceFile(book).bytes();
+  const analysis = await analyzeBook(bytes, book.sourceFileName);
+  const coverFileName =
+    book.coverFileName ??
+    (await writeExtractedEpubCover(
+      new Directory(libraryDirectory, book.id),
+      bytes,
+    ));
+  return {
+    ...book,
+    coverFileName,
+    epubLocations:
+      analysis.format === "epub" ? analysis.epubLocations : book.epubLocations,
+    sections:
+      refreshStructure && analysis.format === "epub"
+        ? analysis.sections
+        : book.sections,
+  };
+}
+
 function ensureLibraryDirectory() {
   libraryDirectory.create({ idempotent: true, intermediates: true });
 }
 
 function safeFileName(fileName: string) {
   return fileName.replaceAll(/[\\/:*?"<>|]/gu, "-");
+}
+
+async function writeExtractedEpubCover(
+  bookDirectory: Directory,
+  bytes: Uint8Array,
+) {
+  const cover = await extractEpubCover(bytes);
+  if (!cover) return undefined;
+  const destination = new File(bookDirectory, `cover.${cover.extension}`);
+  if (destination.exists) destination.delete();
+  destination.create();
+  destination.write(cover.bytes);
+  return destination.name;
 }
 
 function isBookRecordArray(value: unknown): value is BookRecord[] {

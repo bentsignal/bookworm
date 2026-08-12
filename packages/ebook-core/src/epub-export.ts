@@ -3,6 +3,7 @@ import JSZip from "jszip";
 
 import type { EpubManifestItem } from "./epub-navigation";
 import type { BookRecord, BookSection } from "./model";
+import { generateEpubChapters } from "./epub-generated";
 import { rewriteEpubNavigation } from "./epub-navigation";
 
 const xmlParser = new XMLParser({
@@ -13,12 +14,18 @@ const xmlParser = new XMLParser({
 
 type EpubEdition = Pick<
   BookRecord,
-  "author" | "modifiedAt" | "sections" | "title"
+  "author" | "epubLocations" | "modifiedAt" | "sections" | "title"
 >;
+
+interface EditionCover {
+  bytes: Uint8Array;
+  extension: string;
+}
 
 export async function buildEpubEdition(
   source: Uint8Array,
   edition: EpubEdition,
+  cover?: EditionCover,
 ) {
   const archive = await JSZip.loadAsync(source);
   const { manifestItems, packageXml, rootFile } =
@@ -33,17 +40,37 @@ export async function buildEpubEdition(
   if (selected.length === 0) {
     throw new Error("Include at least one chapter before exporting.");
   }
+  const generated = edition.epubLocations
+    ? await generateEpubChapters({
+        archive,
+        rootFile,
+        packageXml,
+        sections: selected,
+        locations: edition.epubLocations,
+      })
+    : undefined;
   const selectedIds = selected.map((section) =>
     sectionManifestId(section, idByHref),
   );
-
-  let nextPackageXml = replaceSpine(packageXml, selectedIds);
+  let nextPackageXml = generated
+    ? generated.packageXml
+    : replaceSpine(packageXml, selectedIds);
   nextPackageXml = replaceMetadataText(nextPackageXml, "title", edition.title);
   nextPackageXml = replaceCreator(nextPackageXml, edition.author);
   nextPackageXml = replaceModifiedDate(nextPackageXml, edition.modifiedAt);
+  if (cover) {
+    const coverName = `bookworm-cover.${safeExtension(cover.extension)}`;
+    archive.file(normalizeHref(rootFile, coverName), cover.bytes);
+    nextPackageXml = replaceCoverMetadata(nextPackageXml, coverName);
+  }
   archive.file(rootFile, nextPackageXml);
 
-  await rewriteEpubNavigation(archive, rootFile, manifestItems, selected);
+  await rewriteEpubNavigation(
+    archive,
+    rootFile,
+    manifestItems,
+    generated?.chapters.map(({ section }) => section) ?? selected,
+  );
 
   await preserveMimetypeStorage(archive);
   return archive.generateAsync({
@@ -51,6 +78,43 @@ export async function buildEpubEdition(
     compression: "DEFLATE",
     compressionOptions: { level: 6 },
   });
+}
+
+function replaceCoverMetadata(packageXml: string, coverName: string) {
+  const withoutCoverProperties = packageXml.replaceAll(
+    /(<(?:[\w.-]+:)?item\b[^>]*\bproperties=["'])([^"']*)(["'][^>]*\/?>)/giu,
+    (_item, start: string, properties: string, end: string) => {
+      const next = properties
+        .split(/\s+/u)
+        .filter((property) => property && property !== "cover-image")
+        .join(" ");
+      return `${start}${next}${end}`;
+    },
+  );
+  const mediaType = imageMediaType(coverName);
+  const coverItem = `<item id="bookworm-cover" href="${coverName}" media-type="${mediaType}" properties="cover-image" />`;
+  const withItem = withoutCoverProperties.replace(
+    /<\/(?:[\w.-]+:)?manifest\s*>/iu,
+    `  ${coverItem}\n$&`,
+  );
+  const meta = '<meta name="cover" content="bookworm-cover" />';
+  const metaPattern =
+    /<(?:[\w.-]+:)?meta\b[^>]*\bname=["']cover["'][^>]*\/?>/iu;
+  if (metaPattern.test(withItem)) return withItem.replace(metaPattern, meta);
+  return withItem.replace(/<\/(?:[\w.-]+:)?metadata\s*>/iu, `  ${meta}\n$&`);
+}
+
+function safeExtension(extension: string) {
+  const safe = extension.replaceAll(/[^a-z0-9]/giu, "").toLowerCase();
+  return safe || "jpg";
+}
+
+function imageMediaType(fileName: string) {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  if (extension === "png") return "image/png";
+  if (extension === "webp") return "image/webp";
+  if (extension === "gif") return "image/gif";
+  return "image/jpeg";
 }
 
 async function readPackageDocument(archive: JSZip) {

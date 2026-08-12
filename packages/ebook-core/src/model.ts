@@ -1,5 +1,15 @@
 export type BookFormat = "epub" | "pdf";
 
+export interface EpubLocation {
+  href: string;
+  index: number;
+  title: string;
+  excerpt: string;
+  fragment?: string;
+  startOffset?: number;
+  endOffset?: number;
+}
+
 export interface BookSection {
   id: string;
   title: string;
@@ -7,6 +17,8 @@ export interface BookSection {
   href?: string;
   startPage?: number;
   endPage?: number;
+  startLocation?: number;
+  endLocation?: number;
 }
 
 export interface BookAnalysis {
@@ -14,12 +26,14 @@ export interface BookAnalysis {
   author?: string;
   format: BookFormat;
   pageCount?: number;
+  epubLocations?: EpubLocation[];
   sections: BookSection[];
 }
 
 export interface BookRecord extends BookAnalysis {
   id: string;
   sourceFileName: string;
+  coverFileName?: string;
   importedAt: string;
   modifiedAt: string;
   fileSize?: number;

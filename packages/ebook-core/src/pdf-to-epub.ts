@@ -10,9 +10,15 @@ interface PdfEpubEdition {
   title: string;
 }
 
+interface EditionCover {
+  bytes: Uint8Array;
+  extension: string;
+}
+
 export async function buildEpubFromPdf(
   pageTexts: string[],
   edition: PdfEpubEdition,
+  cover?: EditionCover,
 ) {
   const chapters = edition.sections
     .filter((section) => section.included)
@@ -22,7 +28,7 @@ export async function buildEpubFromPdf(
   }
   if (!chapters.some((chapter) => chapter.hasText)) {
     throw new Error(
-      "This PDF has no readable text. Worm can convert text-based PDFs; scanned pages will need OCR support.",
+      "This PDF has no readable text. bookworm can convert text-based PDFs; scanned pages will need OCR support.",
     );
   }
 
@@ -31,7 +37,9 @@ export async function buildEpubFromPdf(
   archive.file("META-INF/container.xml", containerXml());
   archive.file("EPUB/styles.css", readerStyles());
   archive.file("EPUB/nav.xhtml", navigationDocument(edition.title, chapters));
-  archive.file("EPUB/package.opf", packageDocument(edition, chapters));
+  archive.file("EPUB/package.opf", packageDocument(edition, chapters, cover));
+  if (cover)
+    archive.file(`EPUB/cover.${safeExtension(cover.extension)}`, cover.bytes);
   for (const chapter of chapters) {
     archive.file(`EPUB/${chapter.fileName}`, chapter.document);
   }
@@ -126,6 +134,7 @@ function containerXml() {
 function packageDocument(
   edition: PdfEpubEdition,
   chapters: ReturnType<typeof createChapter>[],
+  cover: EditionCover | undefined,
 ) {
   const author = edition.author?.trim();
   const modifiedAt = new Date(edition.modifiedAt)
@@ -140,10 +149,13 @@ function packageDocument(
   const spine = chapters
     .map((chapter) => `<itemref idref="${chapter.id}" />`)
     .join("\n    ");
+  const coverItem = cover
+    ? `<item id="cover" href="cover.${safeExtension(cover.extension)}" media-type="${imageMediaType(cover.extension)}" properties="cover-image" />`
+    : "";
   return `<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" unique-identifier="book-id" version="3.0">
   <metadata>
-    <dc:identifier id="book-id">urn:worm:${escapeXml(edition.identifier)}</dc:identifier>
+    <dc:identifier id="book-id">urn:bookworm:${escapeXml(edition.identifier)}</dc:identifier>
     <dc:title>${escapeXml(edition.title)}</dc:title>
     ${author ? `<dc:creator>${escapeXml(author)}</dc:creator>` : ""}
     <dc:language>en</dc:language>
@@ -152,12 +164,26 @@ function packageDocument(
   <manifest>
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />
     <item id="styles" href="styles.css" media-type="text/css" />
+    ${coverItem}
     ${manifest}
   </manifest>
   <spine>
     ${spine}
   </spine>
 </package>`;
+}
+
+function safeExtension(extension: string) {
+  const safe = extension.replaceAll(/[^a-z0-9]/giu, "").toLowerCase();
+  return safe || "jpg";
+}
+
+function imageMediaType(extension: string) {
+  const normalized = safeExtension(extension);
+  if (normalized === "png") return "image/png";
+  if (normalized === "webp") return "image/webp";
+  if (normalized === "gif") return "image/gif";
+  return "image/jpeg";
 }
 
 function navigationDocument(

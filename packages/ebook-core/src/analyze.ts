@@ -2,7 +2,9 @@ import { XMLParser } from "fast-xml-parser";
 import JSZip from "jszip";
 import { PDFDocument } from "pdf-lib";
 
+import type { EpubNavigationPoint } from "./epub-content";
 import type { BookAnalysis } from "./model";
+import { discoverEpubLocations } from "./epub-content";
 import { getBookFormat, titleFromFileName } from "./model";
 
 const xmlParser = new XMLParser({
@@ -13,7 +15,7 @@ const xmlParser = new XMLParser({
 
 export async function analyzeBook(bytes: Uint8Array, fileName: string) {
   const format = getBookFormat(fileName);
-  if (!format) throw new Error("Worm supports EPUB and PDF files.");
+  if (!format) throw new Error("bookworm supports EPUB and PDF files.");
   if (format === "pdf") return analyzePdf(bytes, fileName);
   return analyzeEpub(bytes, fileName);
 }
@@ -56,12 +58,12 @@ async function analyzeEpub(bytes: Uint8Array, fileName: string) {
   const hrefById = new Map(
     manifestItems.map((item) => [item["@_id"], item["@_href"]]),
   );
-  const navTitles = await readNavigationTitles(
+  const navigation = await readNavigationPoints(
     archive,
     rootFile,
     manifestItems,
   );
-  const sections = spineItems.flatMap((item, index) => {
+  const spineSections = spineItems.flatMap((item, index) => {
     const href = hrefById.get(item["@_idref"]);
     if (!href) return [];
     const normalizedHref = normalizeHref(rootFile, href);
@@ -69,19 +71,61 @@ async function analyzeEpub(bytes: Uint8Array, fileName: string) {
       {
         id: `section-${index + 1}`,
         title:
-          navTitles.get(stripFragment(normalizedHref)) ??
-          `Section ${index + 1}`,
+          navigation.find((point) => sameDocument(point.href, normalizedHref))
+            ?.title ?? `Section ${index + 1}`,
         included: true,
         href: normalizedHref,
       },
     ];
   });
+  const spineHrefs = spineSections.flatMap((section) =>
+    section.href ? [section.href] : [],
+  );
+  const epubLocations = await discoverEpubLocations(
+    archive,
+    spineHrefs,
+    navigation,
+  );
+  const sections = sectionsFromNavigation(navigation, epubLocations);
   return {
     title,
     author,
     format: "epub",
-    sections: sections.length > 0 ? sections : fallbackEpubSection(),
+    epubLocations,
+    sections:
+      sections.length > 0
+        ? sections
+        : spineSections.length > 0
+          ? spineSections
+          : fallbackEpubSection(),
   } satisfies BookAnalysis;
+}
+
+function sectionsFromNavigation(
+  navigation: EpubNavigationPoint[],
+  locations: BookAnalysis["epubLocations"],
+) {
+  if (!locations) return [];
+  const starts = navigation.flatMap((point) => {
+    const fragment = fragmentFromHref(point.href);
+    const start = locations.findIndex(
+      (location) =>
+        sameDocument(location.href, point.href) &&
+        (!fragment || location.fragment === fragment),
+    );
+    return start < 0 ? [] : [{ point, start }];
+  });
+  const unique = [
+    ...new Map(starts.map((entry) => [entry.start, entry])).values(),
+  ].sort((first, second) => first.start - second.start);
+  return unique.map(({ point, start }, index) => ({
+    id: `section-${index + 1}`,
+    title: point.title,
+    included: true,
+    href: locations[start]?.href,
+    startLocation: start,
+    endLocation: (unique[index + 1]?.start ?? locations.length) - 1,
+  }));
 }
 
 async function getRootFile(archive: JSZip) {
@@ -97,19 +141,19 @@ async function getRootFile(archive: JSZip) {
   return path;
 }
 
-async function readNavigationTitles(
+async function readNavigationPoints(
   archive: JSZip,
   rootFile: string,
   manifestItems: ManifestItem[],
 ) {
-  const titles = new Map<string, string>();
+  const points = new Array<EpubNavigationPoint>();
   const navigationItem = manifestItems.find((item) => isNavigationItem(item));
-  if (!navigationItem) return titles;
+  if (!navigationItem) return points;
   const navPath = normalizeHref(rootFile, navigationItem["@_href"]);
   const navigation = await archive.file(navPath)?.async("string");
-  if (!navigation) return titles;
+  if (!navigation) return points;
   if (navigationItem["@_media-type"] === "application/x-dtbncx+xml") {
-    return readNcxTitles(navigation, navPath);
+    return readNcxPoints(navigation, navPath);
   }
   for (const match of navigation.matchAll(
     /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/giu,
@@ -117,25 +161,28 @@ async function readNavigationTitles(
     const href = match[1];
     const label = match[2];
     if (!href || !label) continue;
-    titles.set(stripFragment(normalizeHref(navPath, href)), stripMarkup(label));
+    points.push({
+      href: normalizeHref(navPath, href),
+      title: stripMarkup(label),
+    });
   }
-  return titles;
+  return points;
 }
 
-function readNcxTitles(navigation: string, navigationPath: string) {
-  const titles = new Map<string, string>();
+function readNcxPoints(navigation: string, navigationPath: string) {
+  const points = new Array<EpubNavigationPoint>();
   const pointPattern =
     /<(?:[\w.-]+:)?navLabel\b[^>]*>[\s\S]*?<(?:[\w.-]+:)?text\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?text\s*>[\s\S]*?<\/(?:[\w.-]+:)?navLabel\s*>[\s\S]*?<(?:[\w.-]+:)?content\b[^>]*\bsrc=["']([^"']+)["'][^>]*\/?\s*>/giu;
   for (const match of navigation.matchAll(pointPattern)) {
     const label = match[1];
     const href = match[2];
     if (!label || !href) continue;
-    titles.set(
-      stripFragment(normalizeHref(navigationPath, href)),
-      stripMarkup(label),
-    );
+    points.push({
+      href: normalizeHref(navigationPath, href),
+      title: stripMarkup(label),
+    });
   }
-  return titles;
+  return points;
 }
 
 function isNavigationItem(item: ManifestItem) {
@@ -171,6 +218,15 @@ function normalizeHref(parentFile: string, href: string) {
 
 function stripFragment(href: string) {
   return decodeURIComponent(href.split("#")[0] ?? href);
+}
+
+function fragmentFromHref(href: string) {
+  const fragment = href.split("#")[1];
+  return fragment ? decodeURIComponent(fragment) : undefined;
+}
+
+function sameDocument(first: string, second: string) {
+  return stripFragment(first) === stripFragment(second);
 }
 
 function stripMarkup(value: string) {

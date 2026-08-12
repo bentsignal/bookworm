@@ -106,7 +106,7 @@ function EmptyLibrary({
       <View className="bg-primary mb-7 h-24 w-20 -rotate-3 rounded-[4px] p-4">
         <View className="bg-accent h-1 w-7" />
         <Text className="text-primary-foreground mt-4 font-serif text-lg">
-          Worm
+          bookworm
         </Text>
       </View>
       <Text className="text-foreground font-serif text-3xl">
