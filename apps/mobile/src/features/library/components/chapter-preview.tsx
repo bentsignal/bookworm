@@ -1,12 +1,10 @@
-import type { LegendListRef } from "@legendapp/list/react-native";
+import type { LayoutChangeEvent } from "react-native";
 import { useEffect, useRef } from "react";
-import { Pressable, Text, useWindowDimensions, View } from "react-native";
-import { LegendList } from "@legendapp/list/react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import type { BookRecord, EpubLocation } from "@worm/ebook-core";
 
 import { WormPdfView } from "~/native/worm-pdf";
-import { epubPreviewLayout } from "../epub-preview-layout";
 import { getSourceFile } from "../library-storage";
 
 export function ChapterPreview({
@@ -42,78 +40,86 @@ function EpubLocationPreview({
   onSelect: (value: number) => void;
   selected: number;
 }) {
-  const preview = useRef<LegendListRef>(null);
-  const mounted = useRef(false);
+  const preview = useRef<ScrollView>(null);
+  const positions = useRef(new Map<number, number>());
+  const viewportHeight = useRef(0);
+  const pendingReveal = useRef<number | undefined>(selected);
   const skipNextReveal = useRef(false);
   const locations = book.epubLocations ?? emptyLocations;
-  const { fontScale, width } = useWindowDimensions();
-  const rowWidth = Math.max(200, width - 40);
 
-  function layoutFor(location: EpubLocation) {
-    return epubPreviewLayout(locationText(location), rowWidth, fontScale);
-  }
-
-  // eslint-disable-next-line no-restricted-syntax -- Scrubbing moves the native virtualized list without rebuilding any EPUB content.
+  // eslint-disable-next-line no-restricted-syntax -- Scrubbing moves the native scroll view without rebuilding any EPUB content.
   useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
     if (skipNextReveal.current) {
       skipNextReveal.current = false;
       return;
     }
+    pendingReveal.current = selected;
     const frame = requestAnimationFrame(() => {
-      revealLocation(preview, selected, locations.length);
+      revealLocation(
+        preview,
+        positions.current,
+        viewportHeight.current,
+        selected,
+      );
     });
     return () => cancelAnimationFrame(frame);
   }, [locations.length, selected]);
 
   return (
-    <LegendList
+    <ScrollView
       contentContainerStyle={{
         paddingBottom: 120,
         paddingHorizontal: 20,
         paddingTop: 24,
       }}
-      data={locations}
-      dataKey={book.id}
-      estimatedItemSize={88}
-      extraData={selected}
-      getFixedItemSize={(location) => layoutFor(location).height}
-      initialScrollIndex={{
-        index: Math.max(0, Math.min(selected - 1, locations.length - 1)),
-        viewPosition: 0.45,
-      }}
-      keyExtractor={locationKey}
       keyboardDismissMode="interactive"
-      maintainVisibleContentPosition={false}
+      onLayout={(event) => {
+        viewportHeight.current = event.nativeEvent.layout.height;
+        revealPendingLocation(
+          preview,
+          positions.current,
+          viewportHeight.current,
+          pendingReveal,
+        );
+      }}
       ref={preview}
-      recycleItems={false}
-      renderItem={({ index, item }) => (
+      style={{ flex: 1 }}
+    >
+      {locations.map((location, index) => (
         <LocationRow
-          layout={layoutFor(item)}
-          location={item}
+          key={locationKey(location, index)}
+          location={location}
+          onLayout={(offset) => {
+            positions.current.set(index + 1, offset);
+            revealPendingLocation(
+              preview,
+              positions.current,
+              viewportHeight.current,
+              pendingReveal,
+            );
+          }}
           onPress={() => {
-            if (selected !== index + 1) skipNextReveal.current = true;
+            if (selected !== index + 1) {
+              pendingReveal.current = undefined;
+              skipNextReveal.current = true;
+            }
             onSelect(index + 1);
           }}
           selected={selected === index + 1}
         />
-      )}
-      style={{ flex: 1 }}
-    />
+      ))}
+    </ScrollView>
   );
 }
 
 function LocationRow({
-  layout,
   location,
+  onLayout,
   onPress,
   selected,
 }: {
-  layout: ReturnType<typeof epubPreviewLayout>;
   location: EpubLocation;
+  onLayout: (offset: number) => void;
   onPress: () => void;
   selected: boolean;
 }) {
@@ -122,14 +128,12 @@ function LocationRow({
     <Pressable
       accessibilityRole="button"
       className={`relative border-l-[3px] px-4 pt-2 pb-3 ${selected ? "border-primary bg-muted rounded-md" : "border-transparent"}`}
+      onLayout={(event: LayoutChangeEvent) =>
+        onLayout(event.nativeEvent.layout.y)
+      }
       onPress={onPress}
-      style={{ height: layout.height }}
     >
-      <Text
-        className="text-foreground font-serif text-[18px] leading-7"
-        maxFontSizeMultiplier={1.4}
-        numberOfLines={layout.lineCount}
-      >
+      <Text className="text-foreground font-serif text-[18px] leading-7">
         {text}
       </Text>
       <SelectedIndicator selected={selected} />
@@ -153,16 +157,31 @@ function locationText(location: EpubLocation) {
 }
 
 function revealLocation(
-  preview: React.RefObject<LegendListRef | null>,
+  preview: React.RefObject<ScrollView | null>,
+  positions: Map<number, number>,
+  viewportHeight: number,
   value: number,
-  locationCount: number,
 ) {
-  if (locationCount === 0) return;
-  void preview.current?.scrollToIndex({
+  const offset = positions.get(value);
+  if (offset === undefined || viewportHeight === 0) return false;
+  preview.current?.scrollTo({
     animated: false,
-    index: Math.min(value - 1, locationCount - 1),
-    viewPosition: 0.45,
+    y: Math.max(0, offset - viewportHeight * 0.45),
   });
+  return true;
+}
+
+function revealPendingLocation(
+  preview: React.RefObject<ScrollView | null>,
+  positions: Map<number, number>,
+  viewportHeight: number,
+  pendingReveal: React.MutableRefObject<number | undefined>,
+) {
+  const value = pendingReveal.current;
+  if (value === undefined) return;
+  if (revealLocation(preview, positions, viewportHeight, value)) {
+    pendingReveal.current = undefined;
+  }
 }
 
 const emptyLocations = new Array<EpubLocation>();

@@ -46,19 +46,35 @@ const metroPort = await getFreePort();
 const metroHost = "localhost";
 const metroOrigin = `http://${metroHost}:${metroPort}`;
 
-function rewriteBody(body) {
+function rewriteBody(body, advertisedOrigin) {
+  const advertisedHost = new URL(advertisedOrigin).host;
   return normalizeNativeBundleUrls(
     body
-      .replaceAll(`https://127.0.0.1:${metroPort}`, publicOrigin)
-      .replaceAll(`http://127.0.0.1:${metroPort}`, publicOrigin)
-      .replaceAll(`https://localhost:${metroPort}`, publicOrigin)
-      .replaceAll(`http://localhost:${metroPort}`, publicOrigin)
-      .replaceAll(`https://${publicHost}:${metroPort}`, publicOrigin)
-      .replaceAll(`http://${publicHost}:${metroPort}`, publicOrigin)
-      .replaceAll(`${publicHost}:${metroPort}`, publicHost)
-      .replaceAll(`127.0.0.1:${metroPort}`, publicHost)
-      .replaceAll(`localhost:${metroPort}`, publicHost),
+      .replaceAll(`https://127.0.0.1:${metroPort}`, advertisedOrigin)
+      .replaceAll(`http://127.0.0.1:${metroPort}`, advertisedOrigin)
+      .replaceAll(`https://localhost:${metroPort}`, advertisedOrigin)
+      .replaceAll(`http://localhost:${metroPort}`, advertisedOrigin)
+      .replaceAll(`https://${publicHost}:${metroPort}`, advertisedOrigin)
+      .replaceAll(`http://${publicHost}:${metroPort}`, advertisedOrigin)
+      .replaceAll(publicOrigin, advertisedOrigin)
+      .replaceAll(`${publicHost}:${metroPort}`, advertisedHost)
+      .replaceAll(`127.0.0.1:${metroPort}`, advertisedHost)
+      .replaceAll(`localhost:${metroPort}`, advertisedHost)
+      .replaceAll(publicHost, advertisedHost),
   );
+}
+
+function requestOrigin(req) {
+  const forwardedHost = headerValue(req.headers["x-forwarded-host"]);
+  const host = forwardedHost ?? req.headers.host ?? publicHost;
+  if (!/^[\w.:[\]-]+$/u.test(host)) return publicOrigin;
+  const forwardedProto = headerValue(req.headers["x-forwarded-proto"]);
+  const proto = forwardedProto === "https" ? "https" : publicProto;
+  return `${proto}://${host}`;
+}
+
+function headerValue(value) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 function normalizeNativeBundleUrls(body) {
@@ -92,6 +108,7 @@ function getMetroRequestPath(req) {
 }
 
 function proxyRequest(req, res) {
+  const advertisedOrigin = requestOrigin(req);
   const headers = { ...req.headers };
   headers.host = `${publicHost}:${metroPort}`;
   headers["x-forwarded-host"] = publicHost;
@@ -112,6 +129,12 @@ function proxyRequest(req, res) {
       proxyRes.on("data", (chunk) => chunks.push(chunk));
       proxyRes.on("end", () => {
         const responseHeaders = { ...proxyRes.headers };
+        if (responseHeaders.location) {
+          responseHeaders.location = rewriteBody(
+            responseHeaders.location,
+            advertisedOrigin,
+          );
+        }
         const contentType = String(responseHeaders["content-type"] ?? "");
         const body = Buffer.concat(chunks);
         const shouldRewrite =
@@ -126,7 +149,9 @@ function proxyRequest(req, res) {
           return;
         }
 
-        const rewritten = Buffer.from(rewriteBody(body.toString("utf8")));
+        const rewritten = Buffer.from(
+          rewriteBody(body.toString("utf8"), advertisedOrigin),
+        );
         delete responseHeaders["content-length"];
         delete responseHeaders["content-encoding"];
         res.writeHead(proxyRes.statusCode ?? 502, responseHeaders);
