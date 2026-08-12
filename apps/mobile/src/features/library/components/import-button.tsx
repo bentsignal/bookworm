@@ -3,11 +3,9 @@ import { ActivityIndicator, Pressable, Text } from "react-native";
 import { useColor } from "~/hooks/use-color";
 
 export function ImportButton({
-  compact = false,
   isImporting,
   onPress,
 }: {
-  compact?: boolean;
   isImporting: boolean;
   onPress: () => void;
 }) {
@@ -16,7 +14,7 @@ export function ImportButton({
     return (
       <Pressable
         accessibilityRole="button"
-        className={`bg-primary flex-row items-center justify-center rounded-full ${compact ? "h-9 px-4" : "h-12 px-6"}`}
+        className="bg-primary h-12 flex-row items-center justify-center rounded-full px-6"
         disabled
       >
         <ActivityIndicator color={foreground} />
@@ -26,7 +24,7 @@ export function ImportButton({
   return (
     <Pressable
       accessibilityRole="button"
-      className={`bg-primary flex-row items-center justify-center rounded-full ${compact ? "h-9 px-4" : "h-12 px-6"}`}
+      className="bg-primary h-12 flex-row items-center justify-center rounded-full px-6"
       disabled={isImporting}
       onPress={onPress}
     >

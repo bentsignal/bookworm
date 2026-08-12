@@ -9,21 +9,23 @@ import { useLibrary } from "../library-context";
 
 export function LibraryScreen() {
   const { books, importBooks, isImporting, isReady } = useLibrary();
+  const importLabel = isImporting ? "Adding…" : "Add books";
   return (
     <View className="bg-background flex-1">
       <Stack.Screen
         options={{
-          headerLargeTitle: true,
+          headerLargeTitle: false,
           title: "Library",
-          headerRight: () => (
-            <ImportButton
-              compact
-              isImporting={isImporting}
-              onPress={() => void importBooks()}
-            />
-          ),
         }}
       />
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          disabled={isImporting}
+          onPress={() => void importBooks()}
+        >
+          {importLabel}
+        </Stack.Toolbar.Button>
+      </Stack.Toolbar>
       <LibraryContent
         books={books}
         isImporting={isImporting}
