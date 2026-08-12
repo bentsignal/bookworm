@@ -4,6 +4,10 @@ import JSZip from "jszip";
 import type { EpubManifestItem } from "./epub-navigation";
 import type { BookRecord, BookSection } from "./model";
 import { generateEpubChapters } from "./epub-generated";
+import {
+  cleanEpubLocations,
+  remapEpubSections,
+} from "./epub-location-migration";
 import { rewriteEpubNavigation } from "./epub-navigation";
 
 const xmlParser = new XMLParser({
@@ -36,17 +40,27 @@ export async function buildEpubEdition(
       item["@_id"],
     ]),
   );
-  const selected = edition.sections.filter((section) => section.included);
+  const locations = edition.epubLocations
+    ? cleanEpubLocations(edition.epubLocations)
+    : undefined;
+  const sections = locations
+    ? remapEpubSections(
+        edition.sections,
+        edition.epubLocations ?? [],
+        locations,
+      )
+    : edition.sections;
+  const selected = sections.filter((section) => section.included);
   if (selected.length === 0) {
     throw new Error("Include at least one chapter before exporting.");
   }
-  const generated = edition.epubLocations
+  const generated = locations
     ? await generateEpubChapters({
         archive,
         rootFile,
         packageXml,
         sections: selected,
-        locations: edition.epubLocations,
+        locations,
       })
     : undefined;
   const selectedIds = selected.map((section) =>

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { EpubLocation } from "./model";
 import { analyzeBook } from "./analyze";
+import { buildEpubEdition } from "./epub-export";
 import {
   cleanEpubLocations,
   remapEpubSections,
@@ -44,6 +45,42 @@ describe("EPUB location migration", () => {
       startLocation: 1,
       endLocation: 1,
     });
+  });
+
+  it("removes stale empty locations from generated EPUB chapters", async () => {
+    const source = await createSpacedEpub();
+    const analysis = await analyzeBook(source, "spaced.epub");
+    if (analysis.format !== "epub") throw new Error("Expected an EPUB.");
+    const [first, second] = analysis.epubLocations;
+    if (!first || !second) throw new Error("Expected two text locations.");
+    const locations = [
+      first,
+      location("\n\n", first.endOffset ?? 0, second.startOffset ?? 0),
+      second,
+    ];
+    const edition = await buildEpubEdition(source, {
+      title: analysis.title,
+      modifiedAt: "2026-08-12T18:00:00.000Z",
+      epubLocations: locations,
+      sections: [
+        {
+          id: "complete",
+          title: "Complete book",
+          included: true,
+          startLocation: 0,
+          endLocation: 2,
+        },
+      ],
+    });
+    const result = await JSZip.loadAsync(edition);
+    const chapter = await result
+      .file("OPS/bookworm-chapter-1.xhtml")
+      ?.async("string");
+
+    expect(chapter).toContain("First paragraph.");
+    expect(chapter).toContain("Second paragraph.");
+    expect(chapter).not.toContain("&#10;");
+    expect(chapter).not.toContain("&nbsp;");
   });
 });
 
