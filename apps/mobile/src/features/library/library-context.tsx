@@ -10,6 +10,7 @@ import {
   buildEpubEdition,
   buildEpubFromPdf,
   buildPdfEdition,
+  EPUB_STRUCTURE_VERSION,
 } from "@worm/ebook-core";
 
 import { extractPdfTextAsync, renderPdfPageAsync } from "~/native/worm-pdf";
@@ -149,13 +150,7 @@ async function prepareBookAssets(book: BookRecord) {
 }
 
 function needsEpubStructureRefresh(book: BookRecord) {
-  return (
-    !book.epubLocations ||
-    book.epubLocations.some(
-      (location) =>
-        location.startOffset === undefined || location.endOffset === undefined,
-    )
-  );
+  return book.epubStructureVersion !== EPUB_STRUCTURE_VERSION;
 }
 
 function updateBook(id: string, update: Partial<BookRecord>) {

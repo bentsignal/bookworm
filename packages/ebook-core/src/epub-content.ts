@@ -8,6 +8,7 @@ export interface EpubNavigationPoint {
 }
 
 interface DocumentBoundary {
+  end: number;
   fragment?: string;
   start: number;
   title?: string;
@@ -25,11 +26,12 @@ export async function discoverEpubLocations(
     const points = navigation.filter((point) => sameDocument(point.href, href));
     const segments = splitDocument(source, points);
     segments.forEach((segment, index) => {
+      const excerpt = excerptFromMarkup(segment.markup);
       locations.push({
         href,
         index,
-        title: segment.title ?? `Location ${locations.length + 1}`,
-        excerpt: excerptFromMarkup(segment.markup),
+        title: segment.title ?? (excerpt || `Text ${locations.length + 1}`),
+        excerpt,
         fragment: segment.fragment,
         startOffset: segment.startOffset,
         endOffset: segment.endOffset,
@@ -105,53 +107,65 @@ function splitDocument(source: string, navigation: EpubNavigationPoint[] = []) {
       {
         markup: body,
         start: 0,
+        end: body.length,
         title: undefined,
         startOffset: 0,
         endOffset: body.length,
       },
     ];
   }
-  if (hasMeaningfulContent(body.slice(0, boundaries[0]?.start))) {
-    boundaries.unshift({ start: 0, title: undefined });
-  }
-  return boundaries.map((boundary, index) => {
-    const end = boundaries[index + 1]?.start ?? body.length;
+  const complete = withUncoveredText(body, boundaries);
+  return complete.map((boundary) => {
     return {
       ...boundary,
-      markup: body.slice(boundary.start, end),
+      markup: body.slice(boundary.start, boundary.end),
       startOffset: boundary.start,
-      endOffset: end,
+      endOffset: boundary.end,
     };
   });
 }
 
-function documentBoundaries(body: string, navigation: EpubNavigationPoint[]) {
-  const headings = [
-    ...body.matchAll(/<h([1-4])\b[^>]*>([\s\S]*?)<\/h\1\s*>/giu),
-  ];
-  const boundaryDetails = new Array<DocumentBoundary>(
-    ...headings.map((heading) => ({
-      start: heading.index,
-      title: heading[2] ? textFromMarkup(heading[2]) : undefined,
-    })),
-  );
-  for (const point of navigation) {
-    const fragment = fragmentFromHref(point.href);
-    const start = fragment ? fragmentOffset(body, fragment) : 0;
-    if (start < 0) continue;
-    boundaryDetails.push({ start, title: point.title, fragment });
+function withUncoveredText(body: string, boundaries: DocumentBoundary[]) {
+  const complete = new Array<DocumentBoundary>();
+  let cursor = 0;
+  for (const boundary of boundaries) {
+    if (hasMeaningfulContent(body.slice(cursor, boundary.start))) {
+      complete.push({ start: cursor, end: boundary.start });
+    }
+    complete.push(boundary);
+    cursor = boundary.end;
   }
-  const byStart = new Map<number, DocumentBoundary>();
-  for (const detail of boundaryDetails) {
-    const current = byStart.get(detail.start);
-    byStart.set(detail.start, {
-      ...current,
-      ...detail,
-      title: detail.title ?? current?.title,
-      fragment: detail.fragment ?? current?.fragment,
+  if (hasMeaningfulContent(body.slice(cursor))) {
+    complete.push({ start: cursor, end: body.length });
+  }
+  return complete;
+}
+
+function documentBoundaries(body: string, navigation: EpubNavigationPoint[]) {
+  const blockPattern =
+    /<(h[1-6]|p|blockquote|pre|figure|table|ul|ol)\b[^>]*>[\s\S]*?<\/\1\s*>|<(img|image)\b[^>]*\/?\s*>/giu;
+  const boundaryDetails = new Array<DocumentBoundary>();
+  for (const block of body.matchAll(blockPattern)) {
+    const markup = block[0];
+    boundaryDetails.push({
+      start: block.index,
+      end: block.index + markup.length,
+      title: /^<h[1-6]\b/iu.test(markup) ? textFromMarkup(markup) : undefined,
     });
   }
-  return [...byStart.values()].sort((a, b) => a.start - b.start);
+  for (const point of navigation) {
+    const fragment = fragmentFromHref(point.href);
+    const offset = fragment ? fragmentOffset(body, fragment) : 0;
+    if (offset < 0) continue;
+    const boundary =
+      boundaryDetails.find(
+        (item) => item.start <= offset && item.end > offset,
+      ) ?? boundaryDetails.find((item) => item.start >= offset);
+    if (!boundary) continue;
+    boundary.title = point.title;
+    boundary.fragment = fragment;
+  }
+  return boundaryDetails;
 }
 
 function locationMarkup(source: string, location: EpubLocation) {
@@ -159,7 +173,7 @@ function locationMarkup(source: string, location: EpubLocation) {
   if (location.startOffset !== undefined && location.endOffset !== undefined) {
     return body.slice(location.startOffset, location.endOffset);
   }
-  return splitDocument(source)[location.index]?.markup;
+  return body;
 }
 
 function fragmentFromHref(href: string) {
@@ -226,9 +240,7 @@ async function embedImages(
 
 function hasMeaningfulContent(markup: string | undefined) {
   if (!markup) return false;
-  return (
-    /<(?:img|image)\b/iu.test(markup) || textFromMarkup(markup).length > 20
-  );
+  return /<(?:img|image)\b/iu.test(markup) || textFromMarkup(markup).length > 0;
 }
 
 function excerptFromMarkup(markup: string) {

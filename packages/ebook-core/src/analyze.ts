@@ -5,7 +5,11 @@ import { PDFDocument } from "pdf-lib";
 import type { EpubNavigationPoint } from "./epub-content";
 import type { BookAnalysis } from "./model";
 import { discoverEpubLocations } from "./epub-content";
-import { getBookFormat, titleFromFileName } from "./model";
+import {
+  EPUB_STRUCTURE_VERSION,
+  getBookFormat,
+  titleFromFileName,
+} from "./model";
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
@@ -92,6 +96,7 @@ async function analyzeEpub(bytes: Uint8Array, fileName: string) {
     author,
     format: "epub",
     epubLocations,
+    epubStructureVersion: EPUB_STRUCTURE_VERSION,
     sections:
       sections.length > 0
         ? sections

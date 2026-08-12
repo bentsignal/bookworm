@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { File } from "expo-file-system";
 import { Stack } from "expo-router";
@@ -38,6 +39,7 @@ function BookReader({ book }: { book: BookRecord }) {
 }
 
 function PdfReader({ book }: { book: BookRecord }) {
+  const insets = useSafeAreaInsets();
   const primary = useColor("primary");
   const sourceUri = getSourceFile(book).uri;
   const [isReady, setIsReady] = useState(false);
@@ -70,12 +72,16 @@ function PdfReader({ book }: { book: BookRecord }) {
         sourceUri={sourceUri}
         style={{ flex: 1 }}
       />
-      <ReaderPosition label={`Page ${pageNumber} of ${book.pageCount ?? 1}`} />
+      <ReaderPosition
+        bottom={insets.bottom + 8}
+        label={`Page ${pageNumber} of ${book.pageCount ?? 1}`}
+      />
     </View>
   );
 }
 
 function EpubReader({ book }: { book: BookRecord }) {
+  const insets = useSafeAreaInsets();
   const background = useColor("background");
   const foreground = useColor("foreground");
   const muted = useColor("border");
@@ -156,6 +162,7 @@ function EpubReader({ book }: { book: BookRecord }) {
         textInteractionEnabled
       />
       <EpubReaderBar
+        bottom={insets.bottom + 8}
         count={sections.length}
         index={sectionIndex}
         onChange={(index) => {
@@ -170,12 +177,14 @@ function EpubReader({ book }: { book: BookRecord }) {
 }
 
 function EpubReaderBar({
+  bottom,
   count,
   index,
   onChange,
   progress,
   title,
 }: {
+  bottom: number;
   count: number;
   index: number;
   onChange: (index: number) => void;
@@ -183,7 +192,10 @@ function EpubReaderBar({
   title: string;
 }) {
   return (
-    <View className="border-border bg-card absolute right-4 bottom-4 left-4 flex-row items-center rounded-2xl border px-2 py-2 shadow-sm">
+    <View
+      className="border-border bg-card absolute right-4 left-4 flex-row items-center rounded-2xl border px-2 py-2 shadow-sm"
+      style={{ bottom }}
+    >
       <ReaderNavigationButton
         disabled={index === 0}
         label="Previous chapter"
@@ -236,9 +248,12 @@ function ReaderNavigationButton({
   );
 }
 
-function ReaderPosition({ label }: { label: string }) {
+function ReaderPosition({ bottom, label }: { bottom: number; label: string }) {
   return (
-    <View className="bg-card/95 border-border absolute bottom-5 self-center rounded-full border px-4 py-2">
+    <View
+      className="bg-card/95 border-border absolute self-center rounded-full border px-4 py-2"
+      style={{ bottom }}
+    >
       <Text className="text-foreground text-xs font-semibold">{label}</Text>
     </View>
   );

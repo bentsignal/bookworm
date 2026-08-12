@@ -113,9 +113,9 @@ function sectionDescription(
   const range = sectionLocationRange(section, locations);
   const first = locations[range.start];
   const last = locations[range.end];
-  if (!first) return "Location unavailable";
+  if (!first) return "Text unavailable";
   if (range.start === range.end) {
-    return `Location ${range.start + 1} · ${first.title}`;
+    return `Text ${range.start + 1} · ${first.title}`;
   }
-  return `Locations ${range.start + 1}–${range.end + 1} · ${first.title} to ${last?.title ?? "end"}`;
+  return `Text ${range.start + 1}–${range.end + 1} · ${first.title} to ${last?.title ?? "end"}`;
 }

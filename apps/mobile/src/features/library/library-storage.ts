@@ -4,6 +4,7 @@ import type { BookRecord } from "@worm/ebook-core";
 import {
   analyzeBook,
   createEditionFileName,
+  EPUB_STRUCTURE_VERSION,
   extractEpubCover,
 } from "@worm/ebook-core";
 
@@ -91,12 +92,7 @@ export function coverDestination(book: BookRecord, extension: string) {
 
 export async function refreshEpubMetadata(book: BookRecord) {
   if (book.format !== "epub") return book;
-  const refreshStructure =
-    !book.epubLocations ||
-    book.epubLocations.some(
-      (location) =>
-        location.startOffset === undefined || location.endOffset === undefined,
-    );
+  const refreshStructure = book.epubStructureVersion !== EPUB_STRUCTURE_VERSION;
   const bytes = await getSourceFile(book).bytes();
   const analysis = await analyzeBook(bytes, book.sourceFileName);
   const coverFileName =
@@ -108,6 +104,10 @@ export async function refreshEpubMetadata(book: BookRecord) {
   return {
     ...book,
     coverFileName,
+    epubStructureVersion:
+      analysis.format === "epub"
+        ? analysis.epubStructureVersion
+        : book.epubStructureVersion,
     epubLocations:
       analysis.format === "epub" ? analysis.epubLocations : book.epubLocations,
     sections:

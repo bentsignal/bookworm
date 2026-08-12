@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
-import { Host, Slider } from "@expo/ui/swift-ui";
 
 import type { BookRecord, BookSection } from "@worm/ebook-core";
 
@@ -11,6 +11,7 @@ import {
   initialChapterRange,
   updateChapter,
 } from "../chapter-editor-model";
+import { ChapterPositionControls } from "../components/chapter-position-controls";
 import { ChapterPreview } from "../components/chapter-preview";
 import { useLibrary } from "../library-context";
 
@@ -53,6 +54,7 @@ function ChapterEditor({
   onSave: (section: BookSection) => void;
   section: BookSection;
 }) {
+  const insets = useSafeAreaInsets();
   const initial = initialChapterRange(book, section);
   const [title, setTitle] = useState(section.title);
   const [start, setStart] = useState(initial.start);
@@ -63,7 +65,7 @@ function ChapterEditor({
     book.format === "pdf" ? (book.pageCount ?? 1) : epubLocationCount(book);
 
   function setSelected(value: number) {
-    const rounded = Math.round(value);
+    const rounded = Math.max(1, Math.min(maximum, Math.round(value)));
     if (boundary === "start") {
       setStart(rounded);
       if (rounded > end) setEnd(rounded);
@@ -92,8 +94,11 @@ function ChapterEditor({
           ),
         }}
       />
-      <ChapterPreview book={book} selected={selected} />
-      <View className="border-border bg-card gap-4 border-t px-5 pt-5 pb-7">
+      <ChapterPreview book={book} onSelect={setSelected} selected={selected} />
+      <View
+        className="border-border bg-card gap-4 border-t px-5 pt-5"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      >
         <TextInput
           className="border-border bg-background text-foreground h-12 rounded-xl border px-4 text-[16px]"
           onChangeText={setTitle}
@@ -107,21 +112,12 @@ function ChapterEditor({
           onChange={setBoundary}
           start={start}
         />
-        <View>
-          <View className="mb-1 flex-row justify-between">
-            <Text className="text-muted-foreground text-xs">1</Text>
-            <Text className="text-muted-foreground text-xs">{maximum}</Text>
-          </View>
-          <Host style={{ height: 44 }}>
-            <Slider
-              max={maximum}
-              min={1}
-              onValueChange={setSelected}
-              step={1}
-              value={selected}
-            />
-          </Host>
-        </View>
+        <ChapterPositionControls
+          format={book.format}
+          maximum={maximum}
+          onChange={setSelected}
+          value={selected}
+        />
         <LocationSummary book={book} selected={selected} />
       </View>
     </View>
@@ -200,14 +196,17 @@ function LocationSummary({
   return (
     <View>
       <Text className="text-foreground text-center text-sm font-semibold">
-        {location?.title ?? `Location ${selected}`}
+        {location?.title ?? `Text block ${selected}`}
       </Text>
       <Text
         className="text-muted-foreground mt-1 text-center text-xs leading-4"
         numberOfLines={2}
       >
         {location?.excerpt ??
-          `EPUB location ${selected} of ${epubLocationCount(book)}`}
+          `Text block ${selected} of ${epubLocationCount(book)}`}
+      </Text>
+      <Text className="text-primary mt-1 text-center text-[11px] font-semibold">
+        Tap nearby text in the preview to choose it.
       </Text>
     </View>
   );

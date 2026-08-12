@@ -54,7 +54,7 @@ function BookEditor({ book }: { book: BookRecord }) {
         onChangeCover={() => void replaceBookCover(book.id)}
         onRead={() =>
           router.push({
-            pathname: "/(tabs)/(library)/book/[id]/read",
+            pathname: "/book/[id]/read",
             params: { id: book.id },
           })
         }
@@ -131,7 +131,7 @@ function BookStructure({
   const router = useRouter();
   function editSection(section: BookSection) {
     router.push({
-      pathname: "/(tabs)/(library)/book/[id]/section/[sectionId]",
+      pathname: "/book/[id]/section/[sectionId]",
       params: { id: book.id, sectionId: section.id },
     });
   }

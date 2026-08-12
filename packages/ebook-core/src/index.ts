@@ -1,6 +1,7 @@
 export { analyzeBook } from "./analyze";
 export { buildEpubEdition } from "./epub-export";
 export {
+  buildEpubBoundaryHtml,
   buildEpubLocationHtml,
   buildEpubReaderHtml,
   buildEpubSectionHtml,
@@ -10,6 +11,7 @@ export { sectionLocationRange } from "./epub-content";
 export { buildPdfEdition } from "./export";
 export { buildEpubFromPdf } from "./pdf-to-epub";
 export {
+  EPUB_STRUCTURE_VERSION,
   createEditionFileName,
   getBookFormat,
   getIncludedPageIndexes,

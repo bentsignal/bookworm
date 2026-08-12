@@ -49,6 +49,28 @@ export async function buildEpubLocationHtml(
   return readerDocument(markup, theme);
 }
 
+export async function buildEpubBoundaryHtml(
+  source: Uint8Array,
+  locations: EpubLocation[],
+  selectedIndex: number,
+  theme: ReaderTheme,
+) {
+  const archive = await JSZip.loadAsync(source);
+  const first = Math.max(0, selectedIndex - 4);
+  const last = Math.min(locations.length - 1, selectedIndex + 4);
+  const blocks = new Array<string>();
+  for (let index = first; index <= last; index += 1) {
+    const location = locations[index];
+    if (!location) continue;
+    const markup = await renderEpubLocation(archive, location);
+    const selected = index === selectedIndex ? " selected" : "";
+    blocks.push(
+      `<section class="bookworm-boundary${selected}" data-location="${index + 1}">${markup}</section>`,
+    );
+  }
+  return readerDocument(blocks.join("\n"), theme);
+}
+
 function readerDocument(markup: string, theme: ReaderTheme) {
   return `<!doctype html>
 <html lang="en">
@@ -104,6 +126,8 @@ p { margin: 0 0 1.1em; }
 img, svg { height: auto; max-width: 100%; }
 a { color: inherit; text-decoration-color: ${theme.muted}; }
 table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
+.bookworm-boundary { border-left: 3px solid transparent; margin: 0 -0.75rem; padding: 0.5rem 0.75rem; }
+.bookworm-boundary.selected { background: color-mix(in srgb, ${theme.muted} 24%, transparent); border-left-color: ${theme.foreground}; border-radius: 0.35rem; }
 `;
 }
 

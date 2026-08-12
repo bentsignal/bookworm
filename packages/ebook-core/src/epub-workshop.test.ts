@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { analyzeBook } from "./analyze";
 import { extractEpubCover } from "./epub-cover";
 import { buildEpubEdition } from "./epub-export";
+import { buildEpubBoundaryHtml } from "./epub-reader";
 
 describe("EPUB workshop", () => {
   it("discovers editable locations inside large spine documents", async () => {
@@ -11,12 +12,15 @@ describe("EPUB workshop", () => {
     if (analysis.format !== "epub") throw new Error("Expected an EPUB.");
 
     expect(analysis.epubLocations.map(({ title }) => title)).toEqual([
-      "Arrival",
+      "One",
       "The River",
+      "First scene.",
       "The Road",
-      "Afterword",
+      "Second scene.",
+      "Three",
     ]);
-    expect(analysis.epubLocations[2]?.excerpt).toContain("Second scene");
+    expect(analysis.epubLocations[4]?.excerpt).toContain("Second scene");
+    expect(analysis.epubStructureVersion).toBe(2);
     expect(analysis.sections.map(({ title }) => title)).toEqual([
       "Arrival",
       "The River",
@@ -31,6 +35,23 @@ describe("EPUB workshop", () => {
 
     expect(cover?.extension).toBe("jpg");
     expect(cover?.bytes).toEqual(new Uint8Array([4, 5, 6]));
+  });
+
+  it("renders nearby text blocks as tappable boundaries", async () => {
+    const source = await createEpub();
+    const analysis = await analyzeBook(source, "kindred.epub");
+    if (analysis.format !== "epub") throw new Error("Expected an EPUB.");
+    const html = await buildEpubBoundaryHtml(
+      source,
+      analysis.epubLocations,
+      4,
+      { background: "#fff", foreground: "#111", muted: "#ccc" },
+    );
+
+    expect(html).toContain('data-location="5"');
+    expect(html).toContain('class="bookworm-boundary selected"');
+    expect(html).toContain("Second scene.");
+    expect(html).toContain("First scene.");
   });
 
   it("exports user-defined ranges as distinct chapters", async () => {
@@ -49,8 +70,8 @@ describe("EPUB workshop", () => {
           title: "The Road Ahead",
           href: "OPS/two.xhtml",
           included: true,
-          startLocation: 2,
-          endLocation: 2,
+          startLocation: 4,
+          endLocation: 4,
         },
       ],
     });

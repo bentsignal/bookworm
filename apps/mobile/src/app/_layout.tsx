@@ -50,6 +50,9 @@ export default function RootLayout() {
             >
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="book/[id]/index" />
+              <Stack.Screen name="book/[id]/read" />
+              <Stack.Screen name="book/[id]/section/[sectionId]" />
             </Stack>
             <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
           </ThemeProvider>

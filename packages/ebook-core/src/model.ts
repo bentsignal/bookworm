@@ -1,5 +1,7 @@
 export type BookFormat = "epub" | "pdf";
 
+export const EPUB_STRUCTURE_VERSION = 2;
+
 export interface EpubLocation {
   href: string;
   index: number;
@@ -27,6 +29,7 @@ export interface BookAnalysis {
   format: BookFormat;
   pageCount?: number;
   epubLocations?: EpubLocation[];
+  epubStructureVersion?: number;
   sections: BookSection[];
 }
 

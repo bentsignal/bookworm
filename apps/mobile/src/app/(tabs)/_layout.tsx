@@ -22,16 +22,6 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Label>Library</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger
-        name="(workbench)"
-        contentStyle={{ backgroundColor: background }}
-      >
-        <NativeTabs.Trigger.Icon
-          sf={{ default: "hammer", selected: "hammer.fill" }}
-          md="handyman"
-        />
-        <NativeTabs.Trigger.Label>Workbench</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger
         name="(settings)"
         contentStyle={{ backgroundColor: background }}
       >

@@ -42,7 +42,7 @@ export function chapterLocationLabel(
   format: BookRecord["format"],
   value: number,
 ) {
-  return format === "pdf" ? `page ${value}` : `location ${value}`;
+  return format === "pdf" ? `page ${value}` : `text ${value}`;
 }
 
 export function epubLocationCount(book: BookRecord) {
