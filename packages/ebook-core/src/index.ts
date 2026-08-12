@@ -8,6 +8,7 @@ export {
 } from "./epub-reader";
 export { extractEpubCover } from "./epub-cover";
 export { sectionLocationRange } from "./epub-content";
+export { normalizeEpubWhitespace } from "./epub-text";
 export { buildPdfEdition } from "./export";
 export { buildEpubFromPdf } from "./pdf-to-epub";
 export {

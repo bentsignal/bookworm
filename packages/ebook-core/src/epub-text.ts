@@ -4,16 +4,18 @@ export function excerptFromMarkup(markup: string) {
 }
 
 export function textFromMarkup(markup: string) {
-  return decodeXmlEntities(
-    markup
-      .replaceAll(/<[^>]+>/gu, " ")
-      .replaceAll(/\s+/gu, " ")
-      .trim(),
+  return normalizeEpubWhitespace(
+    decodeXmlEntities(markup.replaceAll(/<[^>]+>/gu, " ")),
   );
+}
+
+export function normalizeEpubWhitespace(value: string) {
+  return value.replaceAll(/[\s\u0085]+/gu, " ").trim();
 }
 
 function decodeXmlEntities(value: string) {
   return value
+    .replaceAll(/&nbsp;/giu, "\u00a0")
     .replaceAll("&amp;", "&")
     .replaceAll("&apos;", "'")
     .replaceAll("&gt;", ">")

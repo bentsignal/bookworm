@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import type { BookRecord, EpubLocation } from "@worm/ebook-core";
+import { normalizeEpubWhitespace } from "@worm/ebook-core";
 
 import { WormPdfView } from "~/native/worm-pdf";
 import { getSourceFile } from "../library-storage";
@@ -153,7 +154,11 @@ function locationKey(location: EpubLocation, index: number) {
 }
 
 function locationText(location: EpubLocation) {
-  return location.excerpt || location.title || "Untitled text";
+  return (
+    normalizeEpubWhitespace(location.excerpt) ||
+    normalizeEpubWhitespace(location.title) ||
+    "Untitled text"
+  );
 }
 
 function revealLocation(
