@@ -1,11 +1,12 @@
 import type { LegendListRef } from "@legendapp/list/react-native";
 import { useEffect, useRef } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, useWindowDimensions, View } from "react-native";
 import { LegendList } from "@legendapp/list/react-native";
 
 import type { BookRecord, EpubLocation } from "@worm/ebook-core";
 
 import { WormPdfView } from "~/native/worm-pdf";
+import { epubPreviewLayout } from "../epub-preview-layout";
 import { getSourceFile } from "../library-storage";
 
 export function ChapterPreview({
@@ -45,6 +46,12 @@ function EpubLocationPreview({
   const mounted = useRef(false);
   const skipNextReveal = useRef(false);
   const locations = book.epubLocations ?? emptyLocations;
+  const { fontScale, width } = useWindowDimensions();
+  const rowWidth = Math.max(200, width - 40);
+
+  function layoutFor(location: EpubLocation) {
+    return epubPreviewLayout(locationText(location), rowWidth, fontScale);
+  }
 
   // eslint-disable-next-line no-restricted-syntax -- Scrubbing moves the native virtualized list without rebuilding any EPUB content.
   useEffect(() => {
@@ -73,6 +80,7 @@ function EpubLocationPreview({
       dataKey={book.id}
       estimatedItemSize={88}
       extraData={selected}
+      getFixedItemSize={(location) => layoutFor(location).height}
       initialScrollIndex={{
         index: Math.max(0, Math.min(selected - 1, locations.length - 1)),
         viewPosition: 0.45,
@@ -84,6 +92,7 @@ function EpubLocationPreview({
       recycleItems={false}
       renderItem={({ index, item }) => (
         <LocationRow
+          layout={layoutFor(item)}
           location={item}
           onPress={() => {
             if (selected !== index + 1) skipNextReveal.current = true;
@@ -98,22 +107,29 @@ function EpubLocationPreview({
 }
 
 function LocationRow({
+  layout,
   location,
   onPress,
   selected,
 }: {
+  layout: ReturnType<typeof epubPreviewLayout>;
   location: EpubLocation;
   onPress: () => void;
   selected: boolean;
 }) {
-  const text = location.excerpt || location.title || "Untitled text";
+  const text = locationText(location);
   return (
     <Pressable
       accessibilityRole="button"
       className={`relative border-l-[3px] px-4 pt-2 pb-3 ${selected ? "border-primary bg-muted rounded-md" : "border-transparent"}`}
       onPress={onPress}
+      style={{ height: layout.height }}
     >
-      <Text className="text-foreground font-serif text-[18px] leading-7">
+      <Text
+        className="text-foreground font-serif text-[18px] leading-7"
+        maxFontSizeMultiplier={1.4}
+        numberOfLines={layout.lineCount}
+      >
         {text}
       </Text>
       <SelectedIndicator selected={selected} />
@@ -130,6 +146,10 @@ function SelectedIndicator({ selected }: { selected: boolean }) {
 
 function locationKey(location: EpubLocation, index: number) {
   return `${location.href}:${location.startOffset ?? location.index}:${index}`;
+}
+
+function locationText(location: EpubLocation) {
+  return location.excerpt || location.title || "Untitled text";
 }
 
 function revealLocation(
