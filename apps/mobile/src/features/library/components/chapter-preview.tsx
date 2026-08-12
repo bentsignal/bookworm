@@ -1,13 +1,8 @@
-import type { WebView as WebViewInstance } from "react-native-webview";
-import { useEffect, useRef, useState } from "react";
-import { Text, View } from "react-native";
-import { WebView } from "react-native-webview";
-import { File } from "expo-file-system";
+import { useEffect, useRef } from "react";
+import { FlatList, Pressable, Text } from "react-native";
 
 import type { BookRecord, EpubLocation } from "@worm/ebook-core";
-import { buildEpubBoundaryHtml } from "@worm/ebook-core";
 
-import { useColor } from "~/hooks/use-color";
 import { WormPdfView } from "~/native/worm-pdf";
 import { getSourceFile } from "../library-storage";
 
@@ -44,110 +39,74 @@ function EpubLocationPreview({
   onSelect: (value: number) => void;
   selected: number;
 }) {
-  const background = useColor("background");
-  const foreground = useColor("foreground");
-  const muted = useColor("border");
-  const primary = useColor("primary");
-  const preview = useRef<WebViewInstance>(null);
-  const [initialSelected] = useState(selected);
-  const [document, setDocument] = useState({ key: "", html: "" });
+  const preview = useRef<FlatList<EpubLocation>>(null);
   const locations = book.epubLocations ?? emptyLocations;
-  const sourceUri = getSourceFile(book).uri;
-  const key = `${book.id}:${book.epubStructureVersion ?? 0}:${locations.length}:${background}:${foreground}:${muted}`;
 
-  // eslint-disable-next-line no-restricted-syntax -- The preview converts the EPUB into one reusable boundary document per editor session.
+  // eslint-disable-next-line no-restricted-syntax -- Scrubbing moves the native virtualized list without rebuilding any EPUB content.
   useEffect(() => {
     if (locations.length === 0) return;
-    let cancelled = false;
-    void new File(sourceUri)
-      .bytes()
-      .then((bytes) =>
-        buildEpubBoundaryHtml(bytes, locations, initialSelected - 1, {
-          background,
-          foreground,
-          muted,
-        }),
-      )
-      .then((html) => {
-        if (!cancelled) setDocument({ key, html });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    background,
-    foreground,
-    initialSelected,
-    key,
-    locations,
-    muted,
-    sourceUri,
-  ]);
+    preview.current?.scrollToIndex({
+      animated: false,
+      index: Math.min(selected - 1, locations.length - 1),
+      viewPosition: 0.5,
+    });
+  }, [locations.length, selected]);
 
-  // eslint-disable-next-line no-restricted-syntax -- Selection is moved inside the existing WebView so slider updates do not reload EPUB content.
-  useEffect(() => {
-    preview.current?.injectJavaScript(selectBoundaryScript(selected));
-  }, [selected]);
-
-  if (document.key !== key) {
-    return (
-      <View className="flex-1 items-center justify-center">
-        <Text style={{ color: primary }}>Loading text…</Text>
-      </View>
-    );
-  }
   return (
-    <WebView
-      allowFileAccess={false}
-      containerStyle={{ backgroundColor: background }}
-      decelerationRate="normal"
-      injectedJavaScript={boundaryTapScript}
-      javaScriptEnabled
-      onMessage={({ nativeEvent }) => {
-        const value = Number.parseInt(nativeEvent.data, 10);
-        if (Number.isFinite(value)) onSelect(value);
-      }}
-      onLoadEnd={() =>
-        preview.current?.injectJavaScript(selectBoundaryScript(selected))
-      }
-      originWhitelist={["about:blank"]}
+    <FlatList
+      contentContainerClassName="px-5 py-6"
+      data={locations}
+      getItemLayout={(_data, index) => ({
+        index,
+        length: locationRowHeight,
+        offset: locationRowHeight * index,
+      })}
+      initialScrollIndex={Math.max(0, selected - 1)}
+      keyExtractor={locationKey}
+      keyboardDismissMode="interactive"
       ref={preview}
-      source={{ html: document.html }}
-      style={{ backgroundColor: background }}
+      renderItem={({ index, item }) => (
+        <LocationRow
+          location={item}
+          onPress={() => onSelect(index + 1)}
+          selected={selected === index + 1}
+        />
+      )}
+      style={{ flex: 1 }}
+      windowSize={7}
     />
   );
 }
 
-const boundaryTapScript = `
-var bookwormBoundaries = {};
-document.querySelectorAll('[data-location]').forEach(function (boundary) {
-  bookwormBoundaries[boundary.dataset.location] = boundary;
-});
-var bookwormSelectionFrame;
-var bookwormPendingLocation;
-var bookwormSelectedBoundary = document.querySelector('.bookworm-boundary.selected');
-window.bookwormSelectBoundary = function (location) {
-  bookwormPendingLocation = String(location);
-  if (bookwormSelectionFrame) return;
-  bookwormSelectionFrame = requestAnimationFrame(function () {
-    bookwormSelectionFrame = undefined;
-    if (bookwormSelectedBoundary) bookwormSelectedBoundary.classList.remove('selected');
-    var nextBoundary = bookwormBoundaries[bookwormPendingLocation];
-    if (!nextBoundary) return;
-    nextBoundary.classList.add('selected');
-    bookwormSelectedBoundary = nextBoundary;
-    nextBoundary.scrollIntoView({ block: 'center' });
-  });
-};
-document.addEventListener('click', function (event) {
-  var boundary = event.target.closest('[data-location]');
-  if (boundary) window.ReactNativeWebView.postMessage(boundary.dataset.location);
-});
-true;
-`;
+function LocationRow({
+  location,
+  onPress,
+  selected,
+}: {
+  location: EpubLocation;
+  onPress: () => void;
+  selected: boolean;
+}) {
+  const text = location.excerpt || location.title || "Untitled text";
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className={`h-[120px] justify-center border-l-[3px] px-4 py-3 ${selected ? "border-foreground bg-muted rounded-md" : "border-transparent"}`}
+      onPress={onPress}
+    >
+      <Text
+        className="text-foreground font-serif text-[19px] leading-8"
+        numberOfLines={3}
+      >
+        {text}
+      </Text>
+    </Pressable>
+  );
+}
 
-function selectBoundaryScript(selected: number) {
-  return `window.bookwormSelectBoundary?.(${selected}); true;`;
+function locationKey(location: EpubLocation, index: number) {
+  return `${location.href}:${location.startOffset ?? location.index}:${index}`;
 }
 
 const emptyLocations = new Array<EpubLocation>();
+const locationRowHeight = 120;

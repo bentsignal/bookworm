@@ -65,17 +65,20 @@ export async function renderEpubLocations(
   archive: JSZip,
   locations: EpubLocation[],
 ) {
-  const sourceByHref = new Map<string, string>();
+  const sourceByHref = new Map<string, string | undefined>();
   const rendered = new Array<string>();
   for (const location of locations) {
     let source = sourceByHref.get(location.href);
-    if (!source) {
-      source = await archive.file(location.href)?.async("string");
-      if (!source) {
-        rendered.push("");
-        continue;
-      }
+    if (!sourceByHref.has(location.href)) {
+      const rawSource = await archive.file(location.href)?.async("string");
+      source = rawSource
+        ? extractBody(stripUnsafeMarkup(rawSource))
+        : undefined;
       sourceByHref.set(location.href, source);
+    }
+    if (!source) {
+      rendered.push("");
+      continue;
     }
     const markup = locationMarkup(source, location);
     if (!markup) {
@@ -186,11 +189,10 @@ function documentBoundaries(body: string, navigation: EpubNavigationPoint[]) {
 }
 
 function locationMarkup(source: string, location: EpubLocation) {
-  const body = extractBody(stripUnsafeMarkup(source));
   if (location.startOffset !== undefined && location.endOffset !== undefined) {
-    return body.slice(location.startOffset, location.endOffset);
+    return source.slice(location.startOffset, location.endOffset);
   }
-  return body;
+  return source;
 }
 
 function fragmentFromHref(href: string) {

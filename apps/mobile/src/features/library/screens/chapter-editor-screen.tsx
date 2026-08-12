@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
@@ -23,11 +16,6 @@ import { ChapterPreview } from "../components/chapter-preview";
 import { useLibrary } from "../library-context";
 
 type Boundary = "end" | "start";
-
-const keyboardBehavior = Platform.select({
-  android: "height" as const,
-  ios: "padding" as const,
-});
 
 export function ChapterEditorScreen({
   id,
@@ -92,10 +80,7 @@ function ChapterEditor({
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={keyboardBehavior}
-      className="bg-background flex-1"
-    >
+    <View className="bg-background flex-1">
       <Stack.Screen
         options={{
           headerLargeTitle: false,
@@ -110,9 +95,17 @@ function ChapterEditor({
         }}
       />
       <ChapterPreview book={book} onSelect={setSelected} selected={selected} />
-      <View
-        className="border-border bg-card gap-4 border-t px-5 pt-5"
-        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        className="border-border bg-card max-h-[65%] border-t"
+        contentContainerStyle={{
+          gap: 16,
+          paddingBottom: Math.max(insets.bottom, 16),
+          paddingHorizontal: 20,
+          paddingTop: 20,
+        }}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
       >
         <TextInput
           className="border-border bg-background text-foreground h-12 rounded-xl border px-4 text-[16px]"
@@ -134,8 +127,8 @@ function ChapterEditor({
           value={selected}
         />
         <PositionSummary book={book} selected={selected} />
-      </View>
-    </KeyboardAvoidingView>
+      </ScrollView>
+    </View>
   );
 }
 
