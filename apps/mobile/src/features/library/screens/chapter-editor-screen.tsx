@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  Keyboard,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
@@ -96,6 +103,7 @@ function ChapterEditor({
       />
       <ChapterPreview book={book} onSelect={setSelected} selected={selected} />
       <ScrollView
+        alwaysBounceVertical
         automaticallyAdjustKeyboardInsets
         className="border-border bg-card max-h-[65%] border-t"
         contentContainerStyle={{
@@ -106,6 +114,7 @@ function ChapterEditor({
         }}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
       >
         <TextInput
           className="border-border bg-background text-foreground h-12 rounded-xl border px-4 text-[16px]"
