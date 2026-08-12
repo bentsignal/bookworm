@@ -42,17 +42,22 @@ function EpubLocationPreview({
   selected: number;
 }) {
   const preview = useRef<LegendListRef>(null);
+  const mounted = useRef(false);
+  const skipNextReveal = useRef(false);
   const locations = book.epubLocations ?? emptyLocations;
 
   // eslint-disable-next-line no-restricted-syntax -- Scrubbing moves the native virtualized list without rebuilding any EPUB content.
   useEffect(() => {
-    if (locations.length === 0) return;
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    if (skipNextReveal.current) {
+      skipNextReveal.current = false;
+      return;
+    }
     const frame = requestAnimationFrame(() => {
-      void preview.current?.scrollToIndex({
-        animated: false,
-        index: Math.min(selected - 1, locations.length - 1),
-        viewPosition: 0.45,
-      });
+      revealLocation(preview, selected, locations.length);
     });
     return () => cancelAnimationFrame(frame);
   }, [locations.length, selected]);
@@ -65,10 +70,11 @@ function EpubLocationPreview({
         paddingTop: 24,
       }}
       data={locations}
+      dataKey={book.id}
+      estimatedItemSize={88}
       extraData={selected}
-      getItemType={locationSizeType}
       initialScrollIndex={{
-        index: Math.max(0, selected - 1),
+        index: Math.max(0, Math.min(selected - 1, locations.length - 1)),
         viewPosition: 0.45,
       }}
       keyExtractor={locationKey}
@@ -79,7 +85,10 @@ function EpubLocationPreview({
       renderItem={({ index, item }) => (
         <LocationRow
           location={item}
-          onPress={() => onSelect(index + 1)}
+          onPress={() => {
+            if (selected !== index + 1) skipNextReveal.current = true;
+            onSelect(index + 1);
+          }}
           selected={selected === index + 1}
         />
       )}
@@ -101,7 +110,7 @@ function LocationRow({
   return (
     <Pressable
       accessibilityRole="button"
-      className={`border-l-[3px] px-4 py-2 ${selected ? "border-primary bg-muted rounded-md" : "border-transparent"}`}
+      className={`relative border-l-[3px] px-4 pt-2 pb-3 ${selected ? "border-primary bg-muted rounded-md" : "border-transparent"}`}
       onPress={onPress}
     >
       <Text className="text-foreground font-serif text-[18px] leading-7">
@@ -114,18 +123,26 @@ function LocationRow({
 
 function SelectedIndicator({ selected }: { selected: boolean }) {
   if (!selected) return null;
-  return <View className="bg-primary mt-2 h-1 w-8 rounded-full" />;
+  return (
+    <View className="bg-primary absolute bottom-1 left-4 h-1 w-8 rounded-full" />
+  );
 }
 
 function locationKey(location: EpubLocation, index: number) {
   return `${location.href}:${location.startOffset ?? location.index}:${index}`;
 }
 
-function locationSizeType(location: EpubLocation) {
-  const length = (location.excerpt || location.title || "").length;
-  if (length < 80) return "short";
-  if (length < 220) return "medium";
-  return "long";
+function revealLocation(
+  preview: React.RefObject<LegendListRef | null>,
+  value: number,
+  locationCount: number,
+) {
+  if (locationCount === 0) return;
+  void preview.current?.scrollToIndex({
+    animated: false,
+    index: Math.min(value - 1, locationCount - 1),
+    viewPosition: 0.45,
+  });
 }
 
 const emptyLocations = new Array<EpubLocation>();

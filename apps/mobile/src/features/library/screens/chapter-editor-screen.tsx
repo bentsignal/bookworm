@@ -85,15 +85,11 @@ function ChapterEditor({
         options={{
           headerLargeTitle: false,
           title: "Edit chapter",
-          headerRight: () => (
-            <Pressable accessibilityRole="button" onPress={save}>
-              <Text className="text-primary text-[16px] font-semibold">
-                Save
-              </Text>
-            </Pressable>
-          ),
         }}
       />
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button onPress={save}>Save</Stack.Toolbar.Button>
+      </Stack.Toolbar>
       <ChapterPreview book={book} onSelect={setSelected} selected={selected} />
       <ChapterControlsPanel
         expanded={controlsExpanded}
