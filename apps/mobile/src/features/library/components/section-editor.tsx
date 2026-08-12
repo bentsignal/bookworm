@@ -5,12 +5,12 @@ import type { BookSection } from "@worm/ebook-core";
 export function SectionEditor({
   editable = true,
   onChange,
-  onMove,
+  onEditRange,
   sections,
 }: {
   editable?: boolean;
   onChange: (section: BookSection) => void;
-  onMove: (id: string, direction: -1 | 1) => void;
+  onEditRange?: (section: BookSection) => void;
   sections: BookSection[];
 }) {
   return (
@@ -29,21 +29,34 @@ export function SectionEditor({
               onChange={onChange}
               section={section}
             />
-            <Text className="text-muted-foreground mt-0.5 text-xs">
-              {pageRange(section)}
-            </Text>
+            <SectionRange onEdit={onEditRange} section={section} />
           </View>
-          <SectionControls
+          <SectionInclusion
             editable={editable}
-            first={index === 0}
-            last={index === sections.length - 1}
             onChange={onChange}
-            onMove={onMove}
             section={section}
           />
         </View>
       ))}
     </View>
+  );
+}
+
+function SectionInclusion({
+  editable,
+  onChange,
+  section,
+}: {
+  editable: boolean;
+  onChange: (section: BookSection) => void;
+  section: BookSection;
+}) {
+  if (!editable) return null;
+  return (
+    <Switch
+      onValueChange={(included) => onChange({ ...section, included })}
+      value={section.included}
+    />
   );
 }
 
@@ -73,66 +86,27 @@ function SectionTitle({
   );
 }
 
-function SectionControls({
-  editable,
-  first,
-  last,
-  onChange,
-  onMove,
+function SectionRange({
+  onEdit,
   section,
 }: {
-  editable: boolean;
-  first: boolean;
-  last: boolean;
-  onChange: (section: BookSection) => void;
-  onMove: (id: string, direction: -1 | 1) => void;
+  onEdit: ((section: BookSection) => void) | undefined;
   section: BookSection;
 }) {
-  if (!editable) return null;
-  return (
-    <>
-      <View className="flex-row">
-        <MoveButton
-          disabled={first}
-          label="Move up"
-          symbol="↑"
-          onPress={() => onMove(section.id, -1)}
-        />
-        <MoveButton
-          disabled={last}
-          label="Move down"
-          symbol="↓"
-          onPress={() => onMove(section.id, 1)}
-        />
-      </View>
-      <Switch
-        onValueChange={(included) => onChange({ ...section, included })}
-        value={section.included}
-      />
-    </>
-  );
-}
-
-function MoveButton({
-  disabled,
-  label,
-  onPress,
-  symbol,
-}: {
-  disabled: boolean;
-  label: string;
-  onPress: () => void;
-  symbol: string;
-}) {
+  const label = pageRange(section);
+  if (!onEdit || section.startPage === undefined) {
+    return (
+      <Text className="text-muted-foreground mt-0.5 text-xs">{label}</Text>
+    );
+  }
   return (
     <Pressable
-      accessibilityLabel={label}
-      className="h-10 w-8 items-center justify-center"
-      disabled={disabled}
-      onPress={onPress}
-      style={{ opacity: disabled ? 0.22 : 1 }}
+      accessibilityLabel={`Edit ${label}`}
+      accessibilityRole="button"
+      className="mt-0.5 self-start py-1"
+      onPress={() => onEdit(section)}
     >
-      <Text className="text-primary text-xl">{symbol}</Text>
+      <Text className="text-primary text-xs font-medium">{label}</Text>
     </Pressable>
   );
 }

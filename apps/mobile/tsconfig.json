@@ -10,6 +10,7 @@
   },
   "include": [
     "src",
+    "modules",
     "*.ts",
     "*.js",
     ".expo/types/**/*.ts",

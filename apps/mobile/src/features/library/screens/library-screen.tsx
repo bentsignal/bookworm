@@ -50,6 +50,7 @@ function LibraryContent({
   }
   return (
     <FlatList
+      contentInsetAdjustmentBehavior="automatic"
       columnWrapperClassName="gap-4"
       contentContainerClassName="gap-7 px-5 pb-32 pt-4"
       data={books}

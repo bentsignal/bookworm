@@ -6,9 +6,15 @@ import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 
 import type { BookRecord } from "@worm/ebook-core";
-import { buildEpubEdition, buildPdfEdition } from "@worm/ebook-core";
-
 import {
+  buildEpubEdition,
+  buildEpubFromPdf,
+  buildPdfEdition,
+} from "@worm/ebook-core";
+
+import { extractPdfTextAsync } from "~/native/worm-pdf";
+import {
+  convertedEpubDestination,
   deleteBookFiles,
   editionDestination,
   getSourceFile,
@@ -30,11 +36,41 @@ export function useLibrary() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return {
     ...snapshot,
+    convertPdfToEpub,
     deleteBook,
     exportBook,
     importBooks,
     updateBook,
   };
+}
+
+async function convertPdfToEpub(id: string) {
+  const book = state.books.find((item) => item.id === id);
+  if (book?.format !== "pdf") return;
+  try {
+    const pageTexts = await extractPdfTextAsync(getSourceFile(book).uri);
+    const bytes = await buildEpubFromPdf(pageTexts, {
+      identifier: book.id,
+      title: book.title,
+      author: book.author,
+      modifiedAt: book.modifiedAt,
+      sections: book.sections,
+    });
+    const destination = convertedEpubDestination(book);
+    if (destination.exists) destination.delete();
+    destination.create();
+    destination.write(bytes);
+    updateBook(id, { convertedEpubUri: destination.uri });
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(destination.uri, {
+        mimeType: "application/epub+zip",
+        UTI: "org.idpf.epub-container",
+      });
+    }
+  } catch (error) {
+    Alert.alert("Couldn’t create an EPUB", errorMessage(error));
+  }
 }
 
 async function initializeLibrary() {

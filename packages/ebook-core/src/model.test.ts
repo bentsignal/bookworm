@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   createEditionFileName,
   getIncludedPageIndexes,
-  moveSection,
+  removeSections,
+  reorderSections,
   titleFromFileName,
 } from "./model";
 
@@ -14,16 +15,27 @@ describe("book model", () => {
     );
   });
 
-  it("moves sections without mutating the original", () => {
+  it("reorders sections using native list indices without mutating the original", () => {
     const sections = [
       { id: "a", title: "A", included: true },
       { id: "b", title: "B", included: true },
+      { id: "c", title: "C", included: true },
     ];
-    expect(moveSection(sections, "b", -1).map(({ id }) => id)).toEqual([
+    expect(reorderSections(sections, [0], 3).map(({ id }) => id)).toEqual([
       "b",
+      "c",
       "a",
     ]);
     expect(sections[0]?.id).toBe("a");
+  });
+
+  it("removes the sections selected by a native list", () => {
+    const sections = [
+      { id: "a", title: "A", included: true },
+      { id: "b", title: "B", included: true },
+      { id: "c", title: "C", included: true },
+    ];
+    expect(removeSections(sections, [0, 2]).map(({ id }) => id)).toEqual(["b"]);
   });
 
   it("expands included page ranges in section order", () => {

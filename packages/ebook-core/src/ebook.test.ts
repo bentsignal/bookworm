@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { analyzeBook } from "./analyze";
 import { buildEpubEdition } from "./epub-export";
+import { buildEpubReaderHtml } from "./epub-reader";
 import { buildPdfEdition } from "./export";
 
 describe("ebook analysis", () => {
@@ -126,6 +127,35 @@ describe("EPUB editions", () => {
   });
 });
 
+describe("EPUB reading", () => {
+  it("renders selected chapters in reading order and embeds local images", async () => {
+    const source = await createEpub();
+    const html = await buildEpubReaderHtml(
+      source,
+      [
+        {
+          id: "second",
+          title: "The River",
+          included: true,
+          href: "OPS/two.xhtml",
+        },
+        {
+          id: "first",
+          title: "Arrival",
+          included: true,
+          href: "OPS/one.xhtml",
+        },
+      ],
+      { background: "#fff", foreground: "#111", muted: "#ccc" },
+    );
+
+    expect(html.indexOf("The River")).toBeLessThan(html.indexOf("Arrival"));
+    expect(html).toContain("Two");
+    expect(html).toContain("data:image/png;base64,AQID");
+    expect(html).toContain("default-src 'none'");
+  });
+});
+
 describe("PDF editions", () => {
   it("writes included page ranges in their chosen order", async () => {
     const source = await PDFDocument.create();
@@ -182,8 +212,12 @@ async function createEpub() {
     `<html xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="one.xhtml">Arrival</a></li><li><a href="two.xhtml">The River</a></li><li><a href="three.xhtml">Afterword</a></li></ol></nav></body></html>`,
   );
   archive.file("OPS/one.xhtml", "<html><body>One</body></html>");
-  archive.file("OPS/two.xhtml", "<html><body>Two</body></html>");
+  archive.file(
+    "OPS/two.xhtml",
+    '<html><body>Two<img src="images/river.png" /></body></html>',
+  );
   archive.file("OPS/three.xhtml", "<html><body>Three</body></html>");
+  archive.file("OPS/images/river.png", new Uint8Array([1, 2, 3]));
   return archive.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 }
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Alert,
   Pressable,
@@ -8,19 +9,18 @@ import {
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 
-import type { BookSection } from "@worm/ebook-core";
-import { moveSection } from "@worm/ebook-core";
+import type { BookRecord, BookSection } from "@worm/ebook-core";
 
+import { BookActions, ReadButton } from "../components/book-actions";
 import { BookCover } from "../components/book-cover";
 import { SectionEditor } from "../components/section-editor";
+import { SectionOrganizer } from "../components/section-organizer";
 import { useLibrary } from "../library-context";
 import { parsePageRange } from "../page-range";
 
 export function BookScreen({ id }: { id: string }) {
-  const router = useRouter();
-  const { books, deleteBook, exportBook, updateBook } = useLibrary();
+  const { books } = useLibrary();
   const book = books.find((item) => item.id === id);
-
   if (!book) {
     return (
       <View className="bg-background flex-1 items-center justify-center">
@@ -28,33 +28,20 @@ export function BookScreen({ id }: { id: string }) {
       </View>
     );
   }
+  return <BookEditor book={book} />;
+}
+
+function BookEditor({ book }: { book: BookRecord }) {
+  const router = useRouter();
+  const { convertPdfToEpub, deleteBook, exportBook, updateBook } = useLibrary();
+  const [isConverting, setIsConverting] = useState(false);
 
   function updateSection(section: BookSection) {
-    if (!book) return;
     updateBook(book.id, {
       sections: book.sections.map((item) =>
         item.id === section.id ? section : item,
       ),
     });
-  }
-
-  function confirmDelete() {
-    if (!book) return;
-    Alert.alert(
-      "Remove this book?",
-      "Its Worm copy and generated editions will be deleted.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => {
-            deleteBook(book.id);
-            router.back();
-          },
-        },
-      ],
-    );
   }
 
   return (
@@ -67,6 +54,15 @@ export function BookScreen({ id }: { id: string }) {
       <View className="items-center">
         <BookCover book={book} large />
       </View>
+      <ReadButton
+        format={book.format}
+        onPress={() =>
+          router.push({
+            pathname: "/(tabs)/(library)/book/[id]/read",
+            params: { id: book.id },
+          })
+        }
+      />
       <View className="mt-8 gap-4">
         <Field
           label="Title"
@@ -89,67 +85,38 @@ export function BookScreen({ id }: { id: string }) {
             {sectionCountLabel(book.sections.length)}
           </Text>
         </View>
-        <AddRangeButton
-          book={book}
-          onAdd={(sections) => updateBook(book.id, { sections })}
-        />
+        <View className="flex-row items-center gap-5">
+          <AddRangeButton
+            book={book}
+            onAdd={(sections) => updateBook(book.id, { sections })}
+          />
+          <SectionOrganizer
+            onChange={(sections) => updateBook(book.id, { sections })}
+            sections={book.sections}
+          />
+        </View>
       </View>
       <SectionEditor
         onChange={updateSection}
-        onMove={(sectionId, direction) =>
-          updateBook(book.id, {
-            sections: moveSection(book.sections, sectionId, direction),
-          })
+        onEditRange={(section) =>
+          promptToEditSectionRange(book.pageCount ?? 1, section, updateSection)
         }
         sections={book.sections}
       />
 
       <BookActions
+        convertedEpubUri={book.convertedEpubUri}
         exportedUri={book.exportedUri}
         format={book.format}
-        onDelete={confirmDelete}
+        isConverting={isConverting}
+        onConvert={() => {
+          setIsConverting(true);
+          void convertPdfToEpub(book.id).finally(() => setIsConverting(false));
+        }}
+        onDelete={() => confirmDelete(book, deleteBook, () => router.back())}
         onExport={() => void exportBook(book.id)}
       />
     </ScrollView>
-  );
-}
-
-function BookActions({
-  exportedUri,
-  format,
-  onDelete,
-  onExport,
-}: {
-  exportedUri: string | undefined;
-  format: "epub" | "pdf";
-  onDelete: () => void;
-  onExport: () => void;
-}) {
-  const label = exportLabel(format);
-  return (
-    <>
-      <Pressable
-        accessibilityLabel={label}
-        accessibilityRole="button"
-        className="bg-primary mt-8 h-12 items-center justify-center rounded-full active:opacity-75"
-        onPress={onExport}
-      >
-        <Text className="text-primary-foreground text-[15px] font-semibold">
-          {label}
-        </Text>
-      </Pressable>
-      <Text className="text-muted-foreground mt-3 text-center text-xs">
-        {exportCaption(exportedUri)}
-      </Text>
-      <Pressable
-        accessibilityLabel="Remove from Worm"
-        accessibilityRole="button"
-        className="mt-9 items-center py-3"
-        onPress={onDelete}
-      >
-        <Text className="text-accent text-[15px]">Remove from Worm</Text>
-      </Pressable>
-    </>
   );
 }
 
@@ -195,22 +162,34 @@ function AddRangeButton({
   );
 }
 
-function exportLabel(format: "epub" | "pdf") {
-  return format === "pdf" ? "Export clean PDF" : "Export clean EPUB";
-}
-
 function structureTitle(format: "epub" | "pdf") {
   return format === "pdf" ? "Reading order" : "Chapter order";
 }
 
-function exportCaption(exportedUri: string | undefined) {
-  return exportedUri
-    ? "Latest edition saved in Files"
-    : "Your original stays untouched";
-}
-
 function sectionCountLabel(count: number) {
   return `${count} ${count === 1 ? "section" : "sections"}`;
+}
+
+function confirmDelete(
+  book: BookRecord,
+  deleteBook: (id: string) => void,
+  navigateBack: () => void,
+) {
+  Alert.alert(
+    "Remove this book?",
+    "Its Worm copy and generated editions will be deleted.",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          deleteBook(book.id);
+          navigateBack();
+        },
+      },
+    ],
+  );
 }
 
 function promptForSection(
@@ -218,8 +197,42 @@ function promptForSection(
   sections: BookSection[],
   onAdd: (sections: BookSection[]) => void,
 ) {
+  promptForPageRange("Add page range", pageCount, undefined, (range) => {
+    onAdd([
+      ...sections,
+      {
+        id: `section-${Date.now()}`,
+        title: `Pages ${range.start}–${range.end}`,
+        included: true,
+        startPage: range.start,
+        endPage: range.end,
+      },
+    ]);
+  });
+}
+
+function promptToEditSectionRange(
+  pageCount: number,
+  section: BookSection,
+  onChange: (section: BookSection) => void,
+) {
+  const currentRange =
+    section.startPage === undefined || section.endPage === undefined
+      ? undefined
+      : `${section.startPage}–${section.endPage}`;
+  promptForPageRange("Edit page range", pageCount, currentRange, (range) => {
+    onChange({ ...section, startPage: range.start, endPage: range.end });
+  });
+}
+
+function promptForPageRange(
+  title: string,
+  pageCount: number,
+  defaultValue: string | undefined,
+  onChange: (range: { start: number; end: number }) => void,
+) {
   Alert.prompt(
-    "Add page range",
+    title,
     `Enter a range between 1 and ${pageCount}, such as 12–28.`,
     (value) => {
       const range = parsePageRange(value, pageCount);
@@ -230,17 +243,10 @@ function promptForSection(
         );
         return;
       }
-      onAdd([
-        ...sections,
-        {
-          id: `section-${Date.now()}`,
-          title: `Pages ${range.start}–${range.end}`,
-          included: true,
-          startPage: range.start,
-          endPage: range.end,
-        },
-      ]);
+      onChange(range);
     },
     "plain-text",
+    defaultValue,
+    "numbers-and-punctuation",
   );
 }

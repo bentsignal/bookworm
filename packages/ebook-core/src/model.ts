@@ -20,10 +20,10 @@ export interface BookAnalysis {
 export interface BookRecord extends BookAnalysis {
   id: string;
   sourceFileName: string;
-  sourceUri: string;
   importedAt: string;
   modifiedAt: string;
   fileSize?: number;
+  convertedEpubUri?: string;
   exportedUri?: string;
 }
 
@@ -40,23 +40,30 @@ export function titleFromFileName(fileName: string) {
   return normalized.replaceAll(/\b\p{L}/gu, (letter) => letter.toUpperCase());
 }
 
-export function moveSection(
+export function reorderSections(
   sections: BookSection[],
-  sectionId: string,
-  direction: -1 | 1,
+  sourceIndices: number[],
+  destination: number,
 ) {
-  const currentIndex = sections.findIndex(
-    (section) => section.id === sectionId,
+  const selected = new Set(sourceIndices);
+  const moved = sections.filter((_, index) => selected.has(index));
+  if (moved.length === 0) return sections;
+
+  const remaining = sections.filter((_, index) => !selected.has(index));
+  const removedBeforeDestination = sourceIndices.filter(
+    (index) => index < destination,
+  ).length;
+  const insertionIndex = Math.max(
+    0,
+    Math.min(destination - removedBeforeDestination, remaining.length),
   );
-  const targetIndex = currentIndex + direction;
-  if (currentIndex < 0 || targetIndex < 0 || targetIndex >= sections.length) {
-    return sections;
-  }
-  const next = [...sections];
-  const [section] = next.splice(currentIndex, 1);
-  if (!section) return sections;
-  next.splice(targetIndex, 0, section);
-  return next;
+  remaining.splice(insertionIndex, 0, ...moved);
+  return remaining;
+}
+
+export function removeSections(sections: BookSection[], indices: number[]) {
+  const removed = new Set(indices);
+  return sections.filter((_, index) => !removed.has(index));
 }
 
 export function getIncludedPageIndexes(

@@ -1,11 +1,14 @@
 export { analyzeBook } from "./analyze";
 export { buildEpubEdition } from "./epub-export";
+export { buildEpubReaderHtml } from "./epub-reader";
 export { buildPdfEdition } from "./export";
+export { buildEpubFromPdf } from "./pdf-to-epub";
 export {
   createEditionFileName,
   getBookFormat,
   getIncludedPageIndexes,
-  moveSection,
+  removeSections,
+  reorderSections,
   titleFromFileName,
 } from "./model";
 export type {

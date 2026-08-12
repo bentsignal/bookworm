@@ -30,7 +30,6 @@ export async function importBook(source: File, id: string) {
     ...analysis,
     id,
     sourceFileName: destination.name,
-    sourceUri: destination.uri,
     importedAt: now,
     modifiedAt: now,
     fileSize: destination.size,
@@ -56,8 +55,16 @@ export function editionDestination(book: BookRecord) {
   );
 }
 
+export function convertedEpubDestination(book: BookRecord) {
+  return new File(
+    libraryDirectory,
+    book.id,
+    createEditionFileName(book.title, "epub"),
+  );
+}
+
 export function getSourceFile(book: BookRecord) {
-  return new File(book.sourceUri);
+  return new File(libraryDirectory, book.id, book.sourceFileName);
 }
 
 function ensureLibraryDirectory() {
@@ -79,8 +86,8 @@ function isBookRecord(value: unknown): value is BookRecord {
     typeof value.id === "string" &&
     "title" in value &&
     typeof value.title === "string" &&
-    "sourceUri" in value &&
-    typeof value.sourceUri === "string" &&
+    "sourceFileName" in value &&
+    typeof value.sourceFileName === "string" &&
     "sections" in value &&
     Array.isArray(value.sections)
   );
