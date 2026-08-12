@@ -20,7 +20,7 @@ export function ChapterPreview({
   if (book.format === "pdf") {
     return (
       <WormPdfView
-        displayMode="singlePage"
+        displayMode="continuous"
         pageNumber={selected}
         sourceUri={getSourceFile(book).uri}
         style={{ flex: 1 }}
@@ -65,17 +65,17 @@ function EpubLocationPreview({
         paddingTop: 24,
       }}
       data={locations}
-      estimatedItemSize={72}
       extraData={selected}
+      getItemType={locationSizeType}
       initialScrollIndex={{
         index: Math.max(0, selected - 1),
         viewPosition: 0.45,
       }}
       keyExtractor={locationKey}
       keyboardDismissMode="interactive"
-      maintainVisibleContentPosition={{ data: false, size: true }}
+      maintainVisibleContentPosition={false}
       ref={preview}
-      recycleItems
+      recycleItems={false}
       renderItem={({ index, item }) => (
         <LocationRow
           location={item}
@@ -119,6 +119,13 @@ function SelectedIndicator({ selected }: { selected: boolean }) {
 
 function locationKey(location: EpubLocation, index: number) {
   return `${location.href}:${location.startOffset ?? location.index}:${index}`;
+}
+
+function locationSizeType(location: EpubLocation) {
+  const length = (location.excerpt || location.title || "").length;
+  if (length < 80) return "short";
+  if (length < 220) return "medium";
+  return "long";
 }
 
 const emptyLocations = new Array<EpubLocation>();

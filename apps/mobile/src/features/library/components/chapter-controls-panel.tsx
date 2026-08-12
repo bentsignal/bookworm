@@ -1,6 +1,5 @@
 import type { ViewStyle } from "react-native";
 import {
-  LayoutAnimation,
   PanResponder,
   Platform,
   Pressable,
@@ -13,6 +12,7 @@ import {
   KeyboardStickyView,
   useKeyboardState,
 } from "react-native-keyboard-controller";
+import Animated, { LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 
@@ -33,7 +33,6 @@ export function ChapterControlsPanel({
   const border = useColor("border");
   const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
   function changeExpanded(nextExpanded: boolean) {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     onExpandedChange(nextExpanded);
   }
   const panelSwipe = createPanelSwipe({
@@ -54,15 +53,17 @@ export function ChapterControlsPanel({
       pointerEvents="box-none"
       style={{ bottom: 0, left: 0, position: "absolute", right: 0 }}
     >
-      <View
+      <Animated.View
+        layout={panelTransition}
         pointerEvents="box-none"
         style={{
           paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12),
           paddingHorizontal: 12,
         }}
       >
-        <View
+        <Animated.View
           {...panelSwipe.panHandlers}
+          layout={panelTransition}
           style={shadowStyle(colorScheme, surfaceStyle)}
         >
           <PanelSurface
@@ -80,8 +81,8 @@ export function ChapterControlsPanel({
               </ExpandedControls>
             </View>
           </PanelSurface>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </KeyboardStickyView>
   );
 }
@@ -179,3 +180,4 @@ function shadowStyle(colorScheme: "dark" | "light", surface: ViewStyle) {
 }
 
 const swipeDistance = 28;
+const panelTransition = LinearTransition.springify().damping(24).stiffness(240);
