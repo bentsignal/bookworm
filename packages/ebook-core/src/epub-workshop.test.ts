@@ -20,7 +20,7 @@ describe("EPUB workshop", () => {
       "Three",
     ]);
     expect(analysis.epubLocations[4]?.excerpt).toContain("Second scene");
-    expect(analysis.epubStructureVersion).toBe(2);
+    expect(analysis.epubStructureVersion).toBe(3);
     expect(analysis.sections.map(({ title }) => title)).toEqual([
       "Arrival",
       "The River",

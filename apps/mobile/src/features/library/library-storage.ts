@@ -3,9 +3,11 @@ import { Directory, File, Paths } from "expo-file-system";
 import type { BookRecord } from "@worm/ebook-core";
 import {
   analyzeBook,
+  cleanEpubLocations,
   createEditionFileName,
   EPUB_STRUCTURE_VERSION,
   extractEpubCover,
+  remapEpubSections,
 } from "@worm/ebook-core";
 
 const libraryDirectory = new Directory(Paths.document, "Library");
@@ -93,6 +95,8 @@ export function coverDestination(book: BookRecord, extension: string) {
 export async function refreshEpubMetadata(book: BookRecord) {
   if (book.format !== "epub") return book;
   const refreshStructure = book.epubStructureVersion !== EPUB_STRUCTURE_VERSION;
+  const migrated = migrateCachedEpubMetadata(book);
+  if (migrated) return migrated;
   const bytes = await getSourceFile(book).bytes();
   const analysis = await analyzeBook(bytes, book.sourceFileName);
   const coverFileName =
@@ -115,6 +119,21 @@ export async function refreshEpubMetadata(book: BookRecord) {
         ? analysis.sections
         : book.sections,
   };
+}
+
+function migrateCachedEpubMetadata(book: BookRecord) {
+  if (book.epubStructureVersion !== 2 || !book.epubLocations?.length) return;
+  const epubLocations = cleanEpubLocations(book.epubLocations);
+  return {
+    ...book,
+    epubLocations,
+    epubStructureVersion: EPUB_STRUCTURE_VERSION,
+    sections: remapEpubSections(
+      book.sections,
+      book.epubLocations,
+      epubLocations,
+    ),
+  } satisfies BookRecord;
 }
 
 function ensureLibraryDirectory() {

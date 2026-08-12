@@ -27,6 +27,7 @@ export async function discoverEpubLocations(
     const points = navigation.filter((point) => sameDocument(point.href, href));
     const segments = splitDocument(source, points);
     segments.forEach((segment, index) => {
+      if (!hasMeaningfulContent(segment.markup)) return;
       const excerpt = excerptFromMarkup(segment.markup);
       locations.push({
         href,

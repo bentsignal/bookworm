@@ -1,6 +1,6 @@
 export type BookFormat = "epub" | "pdf";
 
-export const EPUB_STRUCTURE_VERSION = 2;
+export const EPUB_STRUCTURE_VERSION = 3;
 
 export interface EpubLocation {
   href: string;
