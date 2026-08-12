@@ -1,7 +1,11 @@
 import JSZip from "jszip";
 
 import type { BookSection, EpubLocation } from "./model";
-import { renderEpubLocation, renderEpubSection } from "./epub-content";
+import {
+  renderEpubLocation,
+  renderEpubLocations,
+  renderEpubSection,
+} from "./epub-content";
 
 interface ReaderTheme {
   background: string;
@@ -56,18 +60,13 @@ export async function buildEpubBoundaryHtml(
   theme: ReaderTheme,
 ) {
   const archive = await JSZip.loadAsync(source);
-  const first = Math.max(0, selectedIndex - 4);
-  const last = Math.min(locations.length - 1, selectedIndex + 4);
-  const blocks = new Array<string>();
-  for (let index = first; index <= last; index += 1) {
+  const markup = await renderEpubLocations(archive, locations);
+  const blocks = markup.map((content, index) => {
     const location = locations[index];
-    if (!location) continue;
-    const markup = await renderEpubLocation(archive, location);
+    if (!location) return "";
     const selected = index === selectedIndex ? " selected" : "";
-    blocks.push(
-      `<section class="bookworm-boundary${selected}" data-location="${index + 1}">${markup}</section>`,
-    );
-  }
+    return `<section class="bookworm-boundary${selected}" data-location="${index + 1}">${content}</section>`;
+  });
   return readerDocument(blocks.join("\n"), theme);
 }
 

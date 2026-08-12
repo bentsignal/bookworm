@@ -38,8 +38,8 @@ export function ChapterPositionControls({
           onPress={() => onChange(value - 1)}
           symbol="−"
         />
-        <View className="border-border bg-background h-11 min-w-32 flex-row items-center rounded-xl border px-3">
-          <Text className="text-muted-foreground mr-2 text-xs">{noun}</Text>
+        <View className="border-border bg-background h-11 w-44 flex-row items-center rounded-xl border px-4">
+          <Text className="text-muted-foreground text-xs">{noun}</Text>
           <PositionInput
             label={`${noun} number`}
             maximum={maximum}
@@ -79,7 +79,7 @@ function PositionInput({
   return (
     <TextInput
       accessibilityLabel={label}
-      className="text-foreground min-w-12 flex-1 text-right text-[16px] font-semibold tabular-nums"
+      className="text-foreground ml-3 min-w-16 flex-1 px-1 text-right text-[16px] font-semibold tabular-nums"
       defaultValue={String(value)}
       keyboardType="number-pad"
       maxLength={String(maximum).length}

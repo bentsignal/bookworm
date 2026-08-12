@@ -1,6 +1,7 @@
 import type JSZip from "jszip";
 
 import type { BookSection, EpubLocation } from "./model";
+import { excerptFromMarkup, textFromMarkup } from "./epub-text";
 
 export interface EpubNavigationPoint {
   href: string;
@@ -48,26 +49,42 @@ export async function renderEpubSection(
 ) {
   const range = sectionLocationRange(section, locations);
   const selected = locations.slice(range.start, range.end + 1);
-  const rendered = new Array<string>();
-  for (const location of selected) {
-    const source = await archive.file(location.href)?.async("string");
-    if (!source) continue;
-    const markup = locationMarkup(source, location);
-    if (!markup) continue;
-    rendered.push(await embedImages(archive, location.href, markup));
-  }
-  return rendered.join("\n");
+  return (await renderEpubLocations(archive, selected)).join("\n");
 }
 
 export async function renderEpubLocation(
   archive: JSZip,
   location: EpubLocation,
 ) {
-  const source = await archive.file(location.href)?.async("string");
-  if (!source) throw new Error("This EPUB location is missing its content.");
-  const markup = locationMarkup(source, location);
+  const [markup] = await renderEpubLocations(archive, [location]);
   if (!markup) throw new Error("This EPUB location could not be found.");
-  return embedImages(archive, location.href, markup);
+  return markup;
+}
+
+export async function renderEpubLocations(
+  archive: JSZip,
+  locations: EpubLocation[],
+) {
+  const sourceByHref = new Map<string, string>();
+  const rendered = new Array<string>();
+  for (const location of locations) {
+    let source = sourceByHref.get(location.href);
+    if (!source) {
+      source = await archive.file(location.href)?.async("string");
+      if (!source) {
+        rendered.push("");
+        continue;
+      }
+      sourceByHref.set(location.href, source);
+    }
+    const markup = locationMarkup(source, location);
+    if (!markup) {
+      rendered.push("");
+      continue;
+    }
+    rendered.push(await embedImages(archive, location.href, markup));
+  }
+  return rendered;
 }
 
 export function sectionLocationRange(
@@ -241,35 +258,6 @@ async function embedImages(
 function hasMeaningfulContent(markup: string | undefined) {
   if (!markup) return false;
   return /<(?:img|image)\b/iu.test(markup) || textFromMarkup(markup).length > 0;
-}
-
-function excerptFromMarkup(markup: string) {
-  const text = textFromMarkup(markup);
-  return text.length > 180 ? `${text.slice(0, 177).trim()}…` : text;
-}
-
-function textFromMarkup(markup: string) {
-  return decodeXmlEntities(
-    markup
-      .replaceAll(/<[^>]+>/gu, " ")
-      .replaceAll(/\s+/gu, " ")
-      .trim(),
-  );
-}
-
-function decodeXmlEntities(value: string) {
-  return value
-    .replaceAll("&amp;", "&")
-    .replaceAll("&apos;", "'")
-    .replaceAll("&gt;", ">")
-    .replaceAll("&lt;", "<")
-    .replaceAll("&quot;", '"')
-    .replaceAll(/&#(\d+);/gu, (_entity, codePoint: string) =>
-      String.fromCodePoint(Number.parseInt(codePoint, 10)),
-    )
-    .replaceAll(/&#x([\da-f]+);/giu, (_entity, codePoint: string) =>
-      String.fromCodePoint(Number.parseInt(codePoint, 16)),
-    );
 }
 
 function sameDocument(first: string, second: string | undefined) {

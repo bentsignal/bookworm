@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import type { WebView as WebViewInstance } from "react-native-webview";
+import { useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { WebView } from "react-native-webview";
 import { File } from "expo-file-system";
@@ -47,19 +48,21 @@ function EpubLocationPreview({
   const foreground = useColor("foreground");
   const muted = useColor("border");
   const primary = useColor("primary");
+  const preview = useRef<WebViewInstance>(null);
+  const [initialSelected] = useState(selected);
   const [document, setDocument] = useState({ key: "", html: "" });
   const locations = book.epubLocations ?? emptyLocations;
-  const location = locations[selected - 1];
-  const key = `${book.id}:${selected}:${background}`;
+  const sourceUri = getSourceFile(book).uri;
+  const key = `${book.id}:${book.epubStructureVersion ?? 0}:${locations.length}:${background}:${foreground}:${muted}`;
 
-  // eslint-disable-next-line no-restricted-syntax -- The preview converts selected EPUB text boundaries into isolated reader HTML.
+  // eslint-disable-next-line no-restricted-syntax -- The preview converts the EPUB into one reusable boundary document per editor session.
   useEffect(() => {
-    if (!location) return;
+    if (locations.length === 0) return;
     let cancelled = false;
-    void new File(getSourceFile(book).uri)
+    void new File(sourceUri)
       .bytes()
       .then((bytes) =>
-        buildEpubBoundaryHtml(bytes, locations, selected - 1, {
+        buildEpubBoundaryHtml(bytes, locations, initialSelected - 1, {
           background,
           foreground,
           muted,
@@ -71,7 +74,20 @@ function EpubLocationPreview({
     return () => {
       cancelled = true;
     };
-  }, [background, book, foreground, key, location, locations, muted, selected]);
+  }, [
+    background,
+    foreground,
+    initialSelected,
+    key,
+    locations,
+    muted,
+    sourceUri,
+  ]);
+
+  // eslint-disable-next-line no-restricted-syntax -- Selection is moved inside the existing WebView so slider updates do not reload EPUB content.
+  useEffect(() => {
+    preview.current?.injectJavaScript(selectBoundaryScript(selected));
+  }, [selected]);
 
   if (document.key !== key) {
     return (
@@ -91,7 +107,11 @@ function EpubLocationPreview({
         const value = Number.parseInt(nativeEvent.data, 10);
         if (Number.isFinite(value)) onSelect(value);
       }}
+      onLoadEnd={() =>
+        preview.current?.injectJavaScript(selectBoundaryScript(selected))
+      }
       originWhitelist={["about:blank"]}
+      ref={preview}
       source={{ html: document.html }}
       style={{ backgroundColor: background }}
     />
@@ -99,13 +119,35 @@ function EpubLocationPreview({
 }
 
 const boundaryTapScript = `
-var selectedBoundary = document.querySelector('.bookworm-boundary.selected');
-if (selectedBoundary) selectedBoundary.scrollIntoView({ block: 'center' });
+var bookwormBoundaries = {};
+document.querySelectorAll('[data-location]').forEach(function (boundary) {
+  bookwormBoundaries[boundary.dataset.location] = boundary;
+});
+var bookwormSelectionFrame;
+var bookwormPendingLocation;
+var bookwormSelectedBoundary = document.querySelector('.bookworm-boundary.selected');
+window.bookwormSelectBoundary = function (location) {
+  bookwormPendingLocation = String(location);
+  if (bookwormSelectionFrame) return;
+  bookwormSelectionFrame = requestAnimationFrame(function () {
+    bookwormSelectionFrame = undefined;
+    if (bookwormSelectedBoundary) bookwormSelectedBoundary.classList.remove('selected');
+    var nextBoundary = bookwormBoundaries[bookwormPendingLocation];
+    if (!nextBoundary) return;
+    nextBoundary.classList.add('selected');
+    bookwormSelectedBoundary = nextBoundary;
+    nextBoundary.scrollIntoView({ block: 'center' });
+  });
+};
 document.addEventListener('click', function (event) {
   var boundary = event.target.closest('[data-location]');
   if (boundary) window.ReactNativeWebView.postMessage(boundary.dataset.location);
 });
 true;
 `;
+
+function selectBoundaryScript(selected: number) {
+  return `window.bookwormSelectBoundary?.(${selected}); true;`;
+}
 
 const emptyLocations = new Array<EpubLocation>();

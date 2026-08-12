@@ -37,18 +37,18 @@ describe("EPUB workshop", () => {
     expect(cover?.bytes).toEqual(new Uint8Array([4, 5, 6]));
   });
 
-  it("renders nearby text blocks as tappable boundaries", async () => {
+  it("renders all text blocks as one reusable boundary document", async () => {
     const source = await createEpub();
     const analysis = await analyzeBook(source, "kindred.epub");
     if (analysis.format !== "epub") throw new Error("Expected an EPUB.");
     const html = await buildEpubBoundaryHtml(
       source,
       analysis.epubLocations,
-      4,
+      0,
       { background: "#fff", foreground: "#111", muted: "#ccc" },
     );
 
-    expect(html).toContain('data-location="5"');
+    expect(html).toContain('data-location="6"');
     expect(html).toContain('class="bookworm-boundary selected"');
     expect(html).toContain("Second scene.");
     expect(html).toContain("First scene.");

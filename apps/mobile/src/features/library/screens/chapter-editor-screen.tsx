@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 
@@ -16,6 +23,11 @@ import { ChapterPreview } from "../components/chapter-preview";
 import { useLibrary } from "../library-context";
 
 type Boundary = "end" | "start";
+
+const keyboardBehavior = Platform.select({
+  android: "height" as const,
+  ios: "padding" as const,
+});
 
 export function ChapterEditorScreen({
   id,
@@ -80,7 +92,10 @@ function ChapterEditor({
   }
 
   return (
-    <View className="bg-background flex-1">
+    <KeyboardAvoidingView
+      behavior={keyboardBehavior}
+      className="bg-background flex-1"
+    >
       <Stack.Screen
         options={{
           headerLargeTitle: false,
@@ -118,9 +133,9 @@ function ChapterEditor({
           onChange={setSelected}
           value={selected}
         />
-        <LocationSummary book={book} selected={selected} />
+        <PositionSummary book={book} selected={selected} />
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -178,37 +193,18 @@ function BoundaryButton({
   );
 }
 
-function LocationSummary({
+function PositionSummary({
   book,
   selected,
 }: {
   book: BookRecord;
   selected: number;
 }) {
-  if (book.format === "pdf") {
-    return (
-      <Text className="text-muted-foreground text-center text-sm">
-        Previewing PDF page {selected} of {book.pageCount ?? 1}
-      </Text>
-    );
-  }
-  const location = book.epubLocations?.[selected - 1];
+  if (book.format !== "pdf") return null;
   return (
-    <View>
-      <Text className="text-foreground text-center text-sm font-semibold">
-        {location?.title ?? `Text block ${selected}`}
-      </Text>
-      <Text
-        className="text-muted-foreground mt-1 text-center text-xs leading-4"
-        numberOfLines={2}
-      >
-        {location?.excerpt ??
-          `Text block ${selected} of ${epubLocationCount(book)}`}
-      </Text>
-      <Text className="text-primary mt-1 text-center text-[11px] font-semibold">
-        Tap nearby text in the preview to choose it.
-      </Text>
-    </View>
+    <Text className="text-muted-foreground text-center text-sm">
+      Previewing PDF page {selected} of {book.pageCount ?? 1}
+    </Text>
   );
 }
 
