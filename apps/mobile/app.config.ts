@@ -6,7 +6,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "worm",
   owner: "directedbyshawn",
   scheme: "worm",
-  version: "0.1.0",
+  version: "0.1.1",
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "automatic",
@@ -19,6 +19,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   ios: {
+    buildNumber: "2",
     bundleIdentifier: "com.bentsignal.worm",
     supportsTablet: true,
     icon: "./assets/icon.png",
@@ -29,6 +30,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
+    versionCode: 2,
     package: "com.bentsignal.worm",
     adaptiveIcon: {
       backgroundColor: "#08261e",
