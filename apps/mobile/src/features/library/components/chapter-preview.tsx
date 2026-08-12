@@ -1,5 +1,7 @@
+import type { LegendListRef } from "@legendapp/list/react-native";
 import { useEffect, useRef } from "react";
-import { FlatList, Pressable, Text } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { LegendList } from "@legendapp/list/react-native";
 
 import type { BookRecord, EpubLocation } from "@worm/ebook-core";
 
@@ -39,32 +41,41 @@ function EpubLocationPreview({
   onSelect: (value: number) => void;
   selected: number;
 }) {
-  const preview = useRef<FlatList<EpubLocation>>(null);
+  const preview = useRef<LegendListRef>(null);
   const locations = book.epubLocations ?? emptyLocations;
 
   // eslint-disable-next-line no-restricted-syntax -- Scrubbing moves the native virtualized list without rebuilding any EPUB content.
   useEffect(() => {
     if (locations.length === 0) return;
-    preview.current?.scrollToIndex({
-      animated: false,
-      index: Math.min(selected - 1, locations.length - 1),
-      viewPosition: 0.5,
+    const frame = requestAnimationFrame(() => {
+      void preview.current?.scrollToIndex({
+        animated: false,
+        index: Math.min(selected - 1, locations.length - 1),
+        viewPosition: 0.45,
+      });
     });
+    return () => cancelAnimationFrame(frame);
   }, [locations.length, selected]);
 
   return (
-    <FlatList
-      contentContainerClassName="px-5 py-6"
+    <LegendList
+      contentContainerStyle={{
+        paddingBottom: 120,
+        paddingHorizontal: 20,
+        paddingTop: 24,
+      }}
       data={locations}
-      getItemLayout={(_data, index) => ({
-        index,
-        length: locationRowHeight,
-        offset: locationRowHeight * index,
-      })}
-      initialScrollIndex={Math.max(0, selected - 1)}
+      estimatedItemSize={72}
+      extraData={selected}
+      initialScrollIndex={{
+        index: Math.max(0, selected - 1),
+        viewPosition: 0.45,
+      }}
       keyExtractor={locationKey}
       keyboardDismissMode="interactive"
+      maintainVisibleContentPosition={{ data: false, size: true }}
       ref={preview}
+      recycleItems
       renderItem={({ index, item }) => (
         <LocationRow
           location={item}
@@ -73,7 +84,6 @@ function EpubLocationPreview({
         />
       )}
       style={{ flex: 1 }}
-      windowSize={7}
     />
   );
 }
@@ -91,17 +101,20 @@ function LocationRow({
   return (
     <Pressable
       accessibilityRole="button"
-      className={`h-[120px] justify-center border-l-[3px] px-4 py-3 ${selected ? "border-foreground bg-muted rounded-md" : "border-transparent"}`}
+      className={`border-l-[3px] px-4 py-2 ${selected ? "border-primary bg-muted rounded-md" : "border-transparent"}`}
       onPress={onPress}
     >
-      <Text
-        className="text-foreground font-serif text-[19px] leading-8"
-        numberOfLines={3}
-      >
+      <Text className="text-foreground font-serif text-[18px] leading-7">
         {text}
       </Text>
+      <SelectedIndicator selected={selected} />
     </Pressable>
   );
+}
+
+function SelectedIndicator({ selected }: { selected: boolean }) {
+  if (!selected) return null;
+  return <View className="bg-primary mt-2 h-1 w-8 rounded-full" />;
 }
 
 function locationKey(location: EpubLocation, index: number) {
@@ -109,4 +122,3 @@ function locationKey(location: EpubLocation, index: number) {
 }
 
 const emptyLocations = new Array<EpubLocation>();
-const locationRowHeight = 120;

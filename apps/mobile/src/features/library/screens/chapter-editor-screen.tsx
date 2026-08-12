@@ -1,13 +1,5 @@
 import { useState } from "react";
-import {
-  Keyboard,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, Text, TextInput, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 
 import type { BookRecord, BookSection } from "@worm/ebook-core";
@@ -18,6 +10,7 @@ import {
   initialChapterRange,
   updateChapter,
 } from "../chapter-editor-model";
+import { ChapterControlsPanel } from "../components/chapter-controls-panel";
 import { ChapterPositionControls } from "../components/chapter-position-controls";
 import { ChapterPreview } from "../components/chapter-preview";
 import { useLibrary } from "../library-context";
@@ -61,12 +54,12 @@ function ChapterEditor({
   onSave: (section: BookSection) => void;
   section: BookSection;
 }) {
-  const insets = useSafeAreaInsets();
   const initial = initialChapterRange(book, section);
   const [title, setTitle] = useState(section.title);
   const [start, setStart] = useState(initial.start);
   const [end, setEnd] = useState(initial.end);
   const [boundary, setBoundary] = useState<Boundary>("start");
+  const [controlsExpanded, setControlsExpanded] = useState(false);
   const selected = boundary === "start" ? start : end;
   const maximum =
     book.format === "pdf" ? (book.pageCount ?? 1) : epubLocationCount(book);
@@ -102,23 +95,14 @@ function ChapterEditor({
         }}
       />
       <ChapterPreview book={book} onSelect={setSelected} selected={selected} />
-      <ScrollView
-        alwaysBounceVertical
-        automaticallyAdjustKeyboardInsets
-        className="border-border bg-card max-h-[65%] border-t"
-        contentContainerStyle={{
-          gap: 16,
-          paddingBottom: Math.max(insets.bottom, 16),
-          paddingHorizontal: 20,
-          paddingTop: 20,
-        }}
-        keyboardDismissMode="interactive"
-        keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={Keyboard.dismiss}
+      <ChapterControlsPanel
+        expanded={controlsExpanded}
+        onExpandedChange={setControlsExpanded}
       >
         <TextInput
           className="border-border bg-background text-foreground h-12 rounded-xl border px-4 text-[16px]"
           onChangeText={setTitle}
+          onFocus={() => setControlsExpanded(true)}
           placeholder="Chapter title"
           defaultValue={title}
         />
@@ -133,10 +117,11 @@ function ChapterEditor({
           format={book.format}
           maximum={maximum}
           onChange={setSelected}
+          onInputFocus={() => setControlsExpanded(true)}
           value={selected}
         />
         <PositionSummary book={book} selected={selected} />
-      </ScrollView>
+      </ChapterControlsPanel>
     </View>
   );
 }

@@ -1,6 +1,7 @@
-import { StrictMode, useEffect } from "react";
+import { useEffect } from "react";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -36,8 +37,8 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ backgroundColor: background, flex: 1 }}>
-      <SafeAreaProvider>
-        <StrictMode>
+      <KeyboardProvider statusBarTranslucent>
+        <SafeAreaProvider>
           <ThemeProvider value={theme}>
             <Stack
               screenOptions={{
@@ -56,8 +57,8 @@ export default function RootLayout() {
             </Stack>
             <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
           </ThemeProvider>
-        </StrictMode>
-      </SafeAreaProvider>
+        </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

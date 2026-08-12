@@ -8,11 +8,13 @@ export function ChapterPositionControls({
   format,
   maximum,
   onChange,
+  onInputFocus,
   value,
 }: {
   format: BookFormat;
   maximum: number;
   onChange: (value: number) => void;
+  onInputFocus?: () => void;
   value: number;
 }) {
   const noun = format === "pdf" ? "Page" : "Text block";
@@ -44,6 +46,7 @@ export function ChapterPositionControls({
             label={`${noun} number`}
             maximum={maximum}
             onChange={onChange}
+            onFocus={onInputFocus}
             value={value}
           />
         </View>
@@ -62,11 +65,13 @@ function PositionInput({
   label,
   maximum,
   onChange,
+  onFocus,
   value,
 }: {
   label: string;
   maximum: number;
   onChange: (value: number) => void;
+  onFocus?: () => void;
   value: number;
 }) {
   const input = useRef<TextInput>(null);
@@ -87,6 +92,7 @@ function PositionInput({
         const number = Number.parseInt(nativeEvent.text, 10);
         if (Number.isFinite(number)) onChange(number);
       }}
+      onFocus={onFocus}
       ref={input}
       selectTextOnFocus
     />
