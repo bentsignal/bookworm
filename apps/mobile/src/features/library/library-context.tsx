@@ -5,8 +5,9 @@ import { File } from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 
-import type { BookRecord } from "@worm/ebook-core";
+import type { BookAnalysis, BookRecord } from "@worm/ebook-core";
 import {
+  analyzeBook,
   buildEpubEdition,
   buildEpubFromPdf,
   buildPdfEdition,
@@ -43,10 +44,17 @@ export function useLibrary() {
     convertPdfToEpub,
     deleteBook,
     exportBook,
-    importBooks,
+    addBooksToLibrary,
+    pickBookDrafts,
     replaceBookCover,
     updateBook,
   };
+}
+
+export interface BookImportDraft extends BookAnalysis {
+  id: string;
+  source: File;
+  sourceFileName: string;
 }
 
 async function convertPdfToEpub(id: string) {
@@ -89,24 +97,61 @@ async function initializeLibrary() {
   setState({ books, isReady: true });
 }
 
-async function importBooks() {
+async function pickBookDrafts() {
   const picked = await File.pickFileAsync({
     mimeTypes: ["application/epub+zip", "application/pdf"],
     multipleFiles: true,
   });
-  if (picked.canceled) return;
+  if (picked.canceled) return [];
   setState({ isImporting: true });
+  let drafts = new Array<BookImportDraft>();
   try {
-    const imported = await Promise.all(
-      picked.result.map((file) => importBook(file, Crypto.randomUUID())),
+    drafts = await Promise.all(
+      picked.result.map(async (source) => ({
+        ...(await analyzeBook(await source.bytes(), source.name)),
+        id: Crypto.randomUUID(),
+        source,
+        sourceFileName: source.name,
+      })),
     );
-    const prepared = await Promise.all(imported.map(prepareBookAssets));
-    updateBooks([...prepared, ...state.books]);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   } catch (error) {
-    Alert.alert("Couldn’t import that book", errorMessage(error));
+    Alert.alert("Couldn’t read those books", errorMessage(error));
   }
   setState({ isImporting: false });
+  return drafts;
+}
+
+async function addBooksToLibrary(drafts: BookImportDraft[]) {
+  if (drafts.length === 0) return false;
+  setState({ isImporting: true });
+  const imported = new Array<BookRecord>();
+  let succeeded = false;
+  try {
+    for (const draft of drafts) {
+      const author = draft.author?.trim();
+      const title = draft.title.trim();
+      const book = await importBook(draft.source, draft.id, {
+        author: author === "" ? undefined : author,
+        epubLocations: draft.epubLocations,
+        epubStructureVersion: draft.epubStructureVersion,
+        format: draft.format,
+        pageCount: draft.pageCount,
+        sections: draft.sections,
+        title: title.length === 0 ? "Untitled book" : title,
+      });
+      imported.push(await prepareBookAssets(book));
+    }
+    updateBooks([...imported, ...state.books]);
+    void Haptics.notificationAsync(
+      Haptics.NotificationFeedbackType.Success,
+    ).catch(() => undefined);
+    succeeded = true;
+  } catch (error) {
+    for (const book of imported) deleteBookFiles(book);
+    Alert.alert("Couldn’t add those books", errorMessage(error));
+  }
+  setState({ isImporting: false });
+  return succeeded;
 }
 
 async function replaceBookCover(id: string) {

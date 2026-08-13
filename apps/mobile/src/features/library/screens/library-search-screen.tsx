@@ -14,10 +14,9 @@ import { BookTile } from "./library-screen";
 
 export function LibrarySearchScreen() {
   const router = useRouter();
-  const { books, importBooks, isImporting } = useLibrary();
+  const { books } = useLibrary();
   const [query, setQuery] = useState("");
   const results = searchBooks(books, query);
-  const importLabel = isImporting ? "Adding…" : "Add books";
 
   useFocusEffect(() => {
     const frame = requestAnimationFrame(focusNativeLibrarySearch);
@@ -30,14 +29,6 @@ export function LibrarySearchScreen() {
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ headerLargeTitle: false, title: "Library" }} />
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
-          disabled={isImporting}
-          onPress={() => void importBooks()}
-        >
-          {importLabel}
-        </Stack.Toolbar.Button>
-      </Stack.Toolbar>
       <Stack.SearchBar
         autoCapitalize="none"
         hideNavigationBar
@@ -55,7 +46,7 @@ export function LibrarySearchScreen() {
       <FlatList
         columnWrapperClassName="gap-4"
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerClassName="gap-7 px-5 pb-32 pt-4"
+        contentContainerClassName="gap-7 px-5 pb-32"
         data={results}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
@@ -95,7 +86,7 @@ function EmptySearch({ query }: { query: string }) {
   }
   return (
     <SearchMessage
-      detail="Add a book from the Library tab to search it here."
+      detail="Use the Add tab to bring in a book and search it here."
       title="Your library is empty"
     />
   );

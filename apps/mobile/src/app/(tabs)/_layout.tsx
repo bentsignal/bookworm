@@ -26,6 +26,16 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Label>Library</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger
+        name="(add)"
+        contentStyle={{ backgroundColor: background }}
+      >
+        <NativeTabs.Trigger.Icon
+          sf={{ default: "plus", selected: "plus.circle.fill" }}
+          md="add_circle"
+        />
+        <NativeTabs.Trigger.Label>Add</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger
         name="(settings)"
         contentStyle={{ backgroundColor: background }}
       >

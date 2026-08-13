@@ -4,57 +4,33 @@ import { Stack, useRouter } from "expo-router";
 import type { BookRecord } from "@worm/ebook-core";
 
 import { BookCover } from "../components/book-cover";
-import { ImportButton } from "../components/import-button";
 import { useLibrary } from "../library-context";
 
 export function LibraryScreen() {
-  const { books, importBooks, isImporting, isReady } = useLibrary();
-  const importLabel = isImporting ? "Adding…" : "Add books";
+  const { books, isReady } = useLibrary();
   return (
     <View className="bg-background flex-1">
-      <Stack.Screen
-        options={{
-          headerLargeTitle: false,
-          title: "Library",
-        }}
-      />
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
-          disabled={isImporting}
-          onPress={() => void importBooks()}
-        >
-          {importLabel}
-        </Stack.Toolbar.Button>
-      </Stack.Toolbar>
-      <LibraryContent
-        books={books}
-        isImporting={isImporting}
-        isReady={isReady}
-        onImport={() => void importBooks()}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
+      <LibraryContent books={books} isReady={isReady} />
     </View>
   );
 }
 
 function LibraryContent({
   books,
-  isImporting,
   isReady,
-  onImport,
 }: {
   books: BookRecord[];
-  isImporting: boolean;
   isReady: boolean;
-  onImport: () => void;
 }) {
   if (isReady && books.length === 0) {
-    return <EmptyLibrary isImporting={isImporting} onImport={onImport} />;
+    return <EmptyLibrary />;
   }
   return (
     <FlatList
       contentInsetAdjustmentBehavior="automatic"
       columnWrapperClassName="gap-4"
-      contentContainerClassName="gap-7 px-5 pb-32 pt-4"
+      contentContainerClassName="gap-7 px-5 pb-32"
       data={books}
       keyExtractor={({ id }) => id}
       numColumns={2}
@@ -96,13 +72,7 @@ export function BookTile({ book }: { book: BookRecord }) {
   );
 }
 
-function EmptyLibrary({
-  isImporting,
-  onImport,
-}: {
-  isImporting: boolean;
-  onImport: () => void;
-}) {
+function EmptyLibrary() {
   return (
     <View className="flex-1 items-center justify-center px-10 pb-28">
       <View className="bg-primary mb-7 h-24 w-20 -rotate-3 rounded-[4px] p-4">
@@ -114,10 +84,9 @@ function EmptyLibrary({
       <Text className="text-foreground font-serif text-3xl">
         Your shelf is ready.
       </Text>
-      <Text className="text-muted-foreground mt-2 mb-7 text-center text-[15px] leading-6">
-        Bring in an EPUB or PDF from Files.
+      <Text className="text-muted-foreground mt-2 text-center text-[15px] leading-6">
+        Use the Add tab to bring in an EPUB or PDF from Files.
       </Text>
-      <ImportButton isImporting={isImporting} onPress={onImport} />
     </View>
   );
 }

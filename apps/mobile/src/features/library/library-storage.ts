@@ -1,6 +1,6 @@
 import { Directory, File, Paths } from "expo-file-system";
 
-import type { BookRecord } from "@worm/ebook-core";
+import type { BookAnalysis, BookRecord } from "@worm/ebook-core";
 import {
   analyzeBook,
   cleanEpubLocations,
@@ -25,27 +25,36 @@ export async function loadLibrary() {
   }
 }
 
-export async function importBook(source: File, id: string) {
+export async function importBook(
+  source: File,
+  id: string,
+  analyzed?: BookAnalysis,
+) {
   const bytes = await source.bytes();
-  const analysis = await analyzeBook(bytes, source.name);
+  const analysis = analyzed ?? (await analyzeBook(bytes, source.name));
   const bookDirectory = new Directory(libraryDirectory, id);
   bookDirectory.create({ idempotent: true, intermediates: true });
-  const destination = new File(bookDirectory, safeFileName(source.name));
-  await source.copy(destination, { overwrite: false });
-  const coverFileName =
-    analysis.format === "epub"
-      ? await writeExtractedEpubCover(bookDirectory, bytes)
-      : undefined;
-  const now = new Date().toISOString();
-  return {
-    ...analysis,
-    id,
-    sourceFileName: destination.name,
-    coverFileName,
-    importedAt: now,
-    modifiedAt: now,
-    fileSize: destination.size,
-  } satisfies BookRecord;
+  try {
+    const destination = new File(bookDirectory, safeFileName(source.name));
+    await source.copy(destination, { overwrite: false });
+    const coverFileName =
+      analysis.format === "epub"
+        ? await writeExtractedEpubCover(bookDirectory, bytes)
+        : undefined;
+    const now = new Date().toISOString();
+    return {
+      ...analysis,
+      id,
+      sourceFileName: destination.name,
+      coverFileName,
+      importedAt: now,
+      modifiedAt: now,
+      fileSize: destination.size,
+    } satisfies BookRecord;
+  } catch (error) {
+    if (bookDirectory.exists) bookDirectory.delete();
+    throw error;
+  }
 }
 
 export function saveLibrary(books: BookRecord[]) {
