@@ -85,7 +85,7 @@ function EmptyLibrary() {
         Your shelf is ready.
       </Text>
       <Text className="text-muted-foreground mt-2 text-center text-[15px] leading-6">
-        Use the Add tab to bring in an EPUB or PDF from Files.
+        Use the Import tab to bring in an EPUB or PDF from Files.
       </Text>
     </View>
   );

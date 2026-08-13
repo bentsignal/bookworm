@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FlatList, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 
 import type { BookRecord } from "@worm/ebook-core";
@@ -14,6 +15,7 @@ import { BookTile } from "./library-screen";
 
 export function LibrarySearchScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { books } = useLibrary();
   const [query, setQuery] = useState("");
   const results = searchBooks(books, query);
@@ -50,9 +52,11 @@ export function LibrarySearchScreen() {
         ref={nativeLibrarySearchRef}
       />
       <FlatList
+        automaticallyAdjustContentInsets={false}
         columnWrapperClassName="gap-4"
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior="never"
         contentContainerClassName="gap-7 px-5 pb-32"
+        contentContainerStyle={{ paddingTop: insets.top }}
         data={results}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
@@ -92,7 +96,7 @@ function EmptySearch({ query }: { query: string }) {
   }
   return (
     <SearchMessage
-      detail="Use the Add tab to bring in a book and search it here."
+      detail="Use the Import tab to bring in a book and search it here."
       title="Your library is empty"
     />
   );

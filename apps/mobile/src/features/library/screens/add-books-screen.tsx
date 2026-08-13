@@ -201,11 +201,11 @@ function EmptyDrafts({ onChoose }: { onChoose: () => void }) {
   const primary = useColor("primary");
   return (
     <View className="flex-1 items-center justify-center pb-2">
-      <View className="bg-muted mb-7 h-24 w-24 items-center justify-center rounded-full">
+      <View className="mb-4 items-center justify-center">
         <SymbolView
           fallback={<Text className="text-primary text-4xl">+</Text>}
           name="books.vertical.fill"
-          size={43}
+          size={48}
           tintColor={primary}
           type="hierarchical"
         />
@@ -216,12 +216,9 @@ function EmptyDrafts({ onChoose }: { onChoose: () => void }) {
         onPress={onChoose}
       >
         <Text className="text-primary-foreground text-[15px] font-semibold">
-          Choose books
+          Import books
         </Text>
       </Pressable>
-      <Text className="text-muted-foreground mt-3 text-[13px]">
-        EPUB or PDF
-      </Text>
     </View>
   );
 }
@@ -243,7 +240,7 @@ function DraftsHeader({
         className="border-border bg-card h-10 items-center justify-center rounded-full border px-4 active:opacity-70"
         onPress={onChooseMore}
       >
-        <Text className="text-primary text-sm font-semibold">Choose more</Text>
+        <Text className="text-primary text-sm font-semibold">Import more</Text>
       </Pressable>
     </View>
   );

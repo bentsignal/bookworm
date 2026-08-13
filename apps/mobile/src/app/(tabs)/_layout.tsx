@@ -30,10 +30,13 @@ export default function TabLayout() {
         contentStyle={{ backgroundColor: background }}
       >
         <NativeTabs.Trigger.Icon
-          sf={{ default: "plus", selected: "plus.circle.fill" }}
-          md="add_circle"
+          sf={{
+            default: "tray.and.arrow.down",
+            selected: "tray.and.arrow.down.fill",
+          }}
+          md="move_to_inbox"
         />
-        <NativeTabs.Trigger.Label>Add</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Import</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger
         name="(settings)"
