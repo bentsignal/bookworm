@@ -10,6 +10,7 @@ import {
   initialChapterRange,
   updateChapter,
 } from "../chapter-editor-model";
+import { BookSearchControls } from "../components/book-search-controls";
 import { ChapterControlsPanel } from "../components/chapter-controls-panel";
 import { ChapterPositionControls } from "../components/chapter-position-controls";
 import { ChapterPreview } from "../components/chapter-preview";
@@ -101,6 +102,12 @@ function ChapterEditor({
           onFocus={() => setControlsExpanded(true)}
           placeholder="Chapter title"
           defaultValue={title}
+        />
+        <BookSearchControls
+          book={book}
+          onFocus={() => setControlsExpanded(true)}
+          onNavigate={setSelected}
+          selected={selected}
         />
         <BoundaryPicker
           boundary={boundary}

@@ -64,7 +64,7 @@ function LibraryContent({
   );
 }
 
-function BookTile({ book }: { book: BookRecord }) {
+export function BookTile({ book }: { book: BookRecord }) {
   const router = useRouter();
   return (
     <Pressable

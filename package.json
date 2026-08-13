@@ -7,11 +7,6 @@
     "pnpm": "^9.15.4"
   },
   "packageManager": "pnpm@9.15.4",
-  "pnpm": {
-    "patchedDependencies": {
-      "expo-modules-jsi@56.0.12": "patches/expo-modules-jsi@56.0.12.patch"
-    }
-  },
   "scripts": {
     "build": "turbo run build",
     "dev": "portless proxy start --lan && turbo run dev --parallel --continue",

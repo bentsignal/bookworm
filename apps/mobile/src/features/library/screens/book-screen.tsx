@@ -1,12 +1,6 @@
 import { useState } from "react";
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Stack, useRouter } from "expo-router";
 
 import type { BookRecord, BookSection } from "@worm/ebook-core";
@@ -42,10 +36,12 @@ function BookEditor({ book }: { book: BookRecord }) {
   const [isConverting, setIsConverting] = useState(false);
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
+      bottomOffset={24}
       className="bg-background flex-1"
       contentContainerClassName="px-5 pb-20 pt-5"
       keyboardDismissMode="interactive"
+      keyboardShouldPersistTaps="handled"
     >
       <Stack.Screen options={{ title: book.title }} />
       <BookDetails
@@ -76,7 +72,7 @@ function BookEditor({ book }: { book: BookRecord }) {
         onDelete={() => confirmDelete(book, deleteBook, () => router.back())}
         onExport={() => void exportBook(book.id)}
       />
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
@@ -197,6 +193,7 @@ function Field({
       <TextInput
         className="border-border bg-card text-foreground h-12 rounded-xl border px-4 text-[16px]"
         onChangeText={onChange}
+        returnKeyType="done"
         defaultValue={value}
       />
     </View>

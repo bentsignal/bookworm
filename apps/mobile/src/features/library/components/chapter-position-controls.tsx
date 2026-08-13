@@ -1,8 +1,11 @@
 import { useEffect, useRef } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
+import { SymbolView } from "expo-symbols";
 import { Host, Slider } from "@expo/ui/swift-ui";
 
 import type { BookFormat } from "@worm/ebook-core";
+
+import { useColor } from "~/hooks/use-color";
 
 export function ChapterPositionControls({
   format,
@@ -38,7 +41,7 @@ export function ChapterPositionControls({
           disabled={value <= 1}
           label={`Previous ${noun.toLowerCase()}`}
           onPress={() => onChange(value - 1)}
-          symbol="−"
+          symbol="minus"
         />
         <View className="border-border bg-background h-11 w-44 flex-row items-center rounded-xl border px-4">
           <Text className="text-muted-foreground text-xs">{noun}</Text>
@@ -54,7 +57,7 @@ export function ChapterPositionControls({
           disabled={value >= maximum}
           label={`Next ${noun.toLowerCase()}`}
           onPress={() => onChange(value + 1)}
-          symbol="+"
+          symbol="plus"
         />
       </View>
     </View>
@@ -108,8 +111,9 @@ function StepButton({
   disabled: boolean;
   label: string;
   onPress: () => void;
-  symbol: string;
+  symbol: "minus" | "plus";
 }) {
+  const primary = useColor("primary");
   return (
     <Pressable
       accessibilityLabel={label}
@@ -119,7 +123,19 @@ function StepButton({
       onPress={onPress}
       style={{ opacity: disabled ? 0.3 : 1 }}
     >
-      <Text className="text-primary text-xl font-semibold">{symbol}</Text>
+      <SymbolView
+        fallback={
+          <Text className="text-primary text-xl">{fallbackSymbol(symbol)}</Text>
+        }
+        name={symbol}
+        size={19}
+        tintColor={primary}
+        weight="semibold"
+      />
     </Pressable>
   );
+}
+
+function fallbackSymbol(symbol: "minus" | "plus") {
+  return symbol === "plus" ? "+" : "−";
 }
