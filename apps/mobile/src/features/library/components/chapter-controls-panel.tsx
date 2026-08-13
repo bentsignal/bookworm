@@ -21,10 +21,12 @@ import { useColor } from "~/hooks/use-color";
 export function ChapterControlsPanel({
   children,
   expanded,
+  header,
   onExpandedChange,
 }: {
   children: React.ReactNode;
   expanded: boolean;
+  header?: React.ReactNode;
   onExpandedChange: (expanded: boolean) => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -74,6 +76,7 @@ export function ChapterControlsPanel({
             <View>
               <PanelHeader
                 expanded={expanded}
+                header={header}
                 onPress={() => changeExpanded(!expanded)}
               />
               <ExpandedControls expanded={expanded}>
@@ -125,11 +128,21 @@ function ExpandedControls({
 
 function PanelHeader({
   expanded,
+  header,
   onPress,
 }: {
   expanded: boolean;
+  header?: React.ReactNode;
   onPress: () => void;
 }) {
+  if (header) {
+    return (
+      <View className="items-center pt-2 pb-2">
+        <View className="bg-muted-foreground/50 mb-1 h-1 w-9 rounded-full" />
+        {header}
+      </View>
+    );
+  }
   return (
     <Pressable
       accessibilityHint={

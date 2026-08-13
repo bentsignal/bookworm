@@ -13,6 +13,24 @@ interface ReaderTheme {
   muted: string;
 }
 
+export interface EpubReaderSession {
+  buildSectionHtml: (
+    section: BookSection,
+    locations: EpubLocation[],
+    theme: ReaderTheme,
+  ) => Promise<string>;
+}
+
+export async function createEpubReaderSession(source: Uint8Array) {
+  const archive = await JSZip.loadAsync(source);
+  return {
+    async buildSectionHtml(section, locations, theme) {
+      const markup = await renderEpubSection(archive, section, locations);
+      return readerDocument(chapterMarkup(section.title, markup), theme);
+    },
+  } satisfies EpubReaderSession;
+}
+
 export async function buildEpubReaderHtml(
   source: Uint8Array,
   sections: BookSection[],
@@ -38,9 +56,8 @@ export async function buildEpubSectionHtml(
   locations: EpubLocation[],
   theme: ReaderTheme,
 ) {
-  const archive = await JSZip.loadAsync(source);
-  const markup = await renderEpubSection(archive, section, locations);
-  return readerDocument(chapterMarkup(section.title, markup), theme);
+  const session = await createEpubReaderSession(source);
+  return session.buildSectionHtml(section, locations, theme);
 }
 
 export async function buildEpubLocationHtml(

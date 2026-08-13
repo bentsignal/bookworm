@@ -5,7 +5,9 @@ export {
   buildEpubLocationHtml,
   buildEpubReaderHtml,
   buildEpubSectionHtml,
+  createEpubReaderSession,
 } from "./epub-reader";
+export type { EpubReaderSession } from "./epub-reader";
 export { extractEpubCover } from "./epub-cover";
 export { sectionLocationRange } from "./epub-content";
 export {

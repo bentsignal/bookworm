@@ -10,7 +10,10 @@ import {
   remapEpubSections,
 } from "@worm/ebook-core";
 
+import type { BookScope } from "~/db/catalog";
+
 const libraryDirectory = new Directory(Paths.document, "Library");
+const importDirectory = new Directory(Paths.document, "Imports");
 const catalogFile = new File(libraryDirectory, "library.json");
 
 export async function loadLibrary() {
@@ -29,10 +32,11 @@ export async function importBook(
   source: File,
   id: string,
   analyzed?: BookAnalysis,
+  scope: BookScope = "library",
 ) {
   const bytes = await source.bytes();
   const analysis = analyzed ?? (await analyzeBook(bytes, source.name));
-  const bookDirectory = new Directory(libraryDirectory, id);
+  const bookDirectory = bookDirectoryFor(id, scope);
   bookDirectory.create({ idempotent: true, intermediates: true });
   try {
     const destination = new File(bookDirectory, safeFileName(source.name));
@@ -64,8 +68,32 @@ export function saveLibrary(books: BookRecord[]) {
 }
 
 export function deleteBookFiles(book: BookRecord) {
-  const directory = new Directory(libraryDirectory, book.id);
+  deleteStoredBookFiles(book, "library");
+}
+
+export function deleteStoredBookFiles(book: BookRecord, scope: BookScope) {
+  const directory = bookDirectoryFor(book.id, scope);
   if (directory.exists) directory.delete();
+}
+
+export async function copyImportToLibrary(book: BookRecord) {
+  const destination = bookDirectoryFor(book.id, "library");
+  destination.create({ idempotent: true, intermediates: true });
+  try {
+    await getSourceFile(book, "import").copy(
+      new File(destination, book.sourceFileName),
+      { overwrite: false },
+    );
+    const cover = getCoverFile(book, "import");
+    if (cover?.exists && book.coverFileName) {
+      await cover.copy(new File(destination, book.coverFileName), {
+        overwrite: false,
+      });
+    }
+  } catch (error) {
+    if (destination.exists) destination.delete();
+    throw error;
+  }
 }
 
 export function editionDestination(book: BookRecord) {
@@ -84,36 +112,39 @@ export function convertedEpubDestination(book: BookRecord) {
   );
 }
 
-export function getSourceFile(book: BookRecord) {
-  return new File(libraryDirectory, book.id, book.sourceFileName);
+export function getSourceFile(book: BookRecord, scope: BookScope = "library") {
+  return new File(bookDirectoryFor(book.id, scope), book.sourceFileName);
 }
 
-export function getCoverFile(book: BookRecord) {
+export function getCoverFile(book: BookRecord, scope: BookScope = "library") {
   if (!book.coverFileName) return undefined;
-  return new File(libraryDirectory, book.id, book.coverFileName);
+  return new File(bookDirectoryFor(book.id, scope), book.coverFileName);
 }
 
-export function coverDestination(book: BookRecord, extension: string) {
+export function coverDestination(
+  book: BookRecord,
+  extension: string,
+  scope: BookScope = "library",
+) {
   return new File(
-    libraryDirectory,
-    book.id,
+    bookDirectoryFor(book.id, scope),
     `cover.${extension.replaceAll(/[^a-z0-9]/giu, "").toLowerCase() || "jpg"}`,
   );
 }
 
-export async function refreshEpubMetadata(book: BookRecord) {
+export async function refreshEpubMetadata(
+  book: BookRecord,
+  scope: BookScope = "library",
+) {
   if (book.format !== "epub") return book;
   const refreshStructure = book.epubStructureVersion !== EPUB_STRUCTURE_VERSION;
   const migrated = migrateCachedEpubMetadata(book);
   if (migrated) return migrated;
-  const bytes = await getSourceFile(book).bytes();
+  const bytes = await getSourceFile(book, scope).bytes();
   const analysis = await analyzeBook(bytes, book.sourceFileName);
   const coverFileName =
     book.coverFileName ??
-    (await writeExtractedEpubCover(
-      new Directory(libraryDirectory, book.id),
-      bytes,
-    ));
+    (await writeExtractedEpubCover(bookDirectoryFor(book.id, scope), bytes));
   return {
     ...book,
     coverFileName,
@@ -147,6 +178,15 @@ function migrateCachedEpubMetadata(book: BookRecord) {
 
 function ensureLibraryDirectory() {
   libraryDirectory.create({ idempotent: true, intermediates: true });
+  importDirectory.create({ idempotent: true, intermediates: true });
+}
+
+function bookDirectoryFor(id: string, scope: BookScope) {
+  ensureLibraryDirectory();
+  return new Directory(
+    scope === "library" ? libraryDirectory : importDirectory,
+    id,
+  );
 }
 
 function safeFileName(fileName: string) {

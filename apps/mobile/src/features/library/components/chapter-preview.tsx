@@ -6,6 +6,7 @@ import { LegendList } from "@legendapp/list/react-native";
 import type { BookRecord, EpubLocation } from "@worm/ebook-core";
 import { normalizeEpubWhitespace } from "@worm/ebook-core";
 
+import type { BookScope } from "~/db/catalog";
 import { WormPdfView } from "~/native/worm-pdf";
 import { getSourceFile } from "../library-storage";
 
@@ -13,17 +14,19 @@ export function ChapterPreview({
   book,
   onSelect,
   selected,
+  scope = "library",
 }: {
   book: BookRecord;
   onSelect: (value: number) => void;
   selected: number;
+  scope?: BookScope;
 }) {
   if (book.format === "pdf") {
     return (
       <WormPdfView
         displayMode="continuous"
         pageNumber={selected}
-        sourceUri={getSourceFile(book).uri}
+        sourceUri={getSourceFile(book, scope).uri}
         style={{ flex: 1 }}
       />
     );

@@ -5,15 +5,20 @@ import { Stack, useRouter } from "expo-router";
 
 import type { BookRecord, BookSection } from "@worm/ebook-core";
 
+import type { BookScope } from "~/db/catalog";
 import { BookActions, ReadButton } from "../components/book-actions";
 import { BookCover } from "../components/book-cover";
 import { SectionEditor } from "../components/section-editor";
 import { SectionOrganizer } from "../components/section-organizer";
 import { useLibrary } from "../library-context";
 
-export function BookScreen({ id }: { id: string }) {
-  const { books } = useLibrary();
-  const book = books.find((item) => item.id === id);
+/* eslint-disable max-lines */
+
+export function BookScreen({ id, scope }: { id: string; scope: BookScope }) {
+  const { books, imports } = useLibrary();
+  const book = (scope === "library" ? books : imports).find(
+    (item) => item.id === id,
+  );
   if (!book) {
     return (
       <View className="bg-background flex-1 items-center justify-center">
@@ -21,10 +26,10 @@ export function BookScreen({ id }: { id: string }) {
       </View>
     );
   }
-  return <BookEditor book={book} />;
+  return <BookEditor book={book} scope={scope} />;
 }
 
-function BookEditor({ book }: { book: BookRecord }) {
+function BookEditor({ book, scope }: { book: BookRecord; scope: BookScope }) {
   const router = useRouter();
   const {
     convertPdfToEpub,
@@ -32,6 +37,7 @@ function BookEditor({ book }: { book: BookRecord }) {
     exportBook,
     replaceBookCover,
     updateBook,
+    updateImport,
   } = useLibrary();
   const [isConverting, setIsConverting] = useState(false);
 
@@ -46,33 +52,75 @@ function BookEditor({ book }: { book: BookRecord }) {
       <Stack.Screen options={{ title: book.title }} />
       <BookDetails
         book={book}
-        onChange={(update) => updateBook(book.id, update)}
-        onChangeCover={() => void replaceBookCover(book.id)}
+        onChange={(update) =>
+          scope === "library"
+            ? updateBook(book.id, update)
+            : updateImport(book.id, update)
+        }
+        onChangeCover={() => void replaceBookCover(book.id, scope)}
         onRead={() =>
           router.push({
             pathname: "/book/[id]/read",
-            params: { id: book.id },
+            params: { id: book.id, scope },
           })
         }
+        scope={scope}
       />
       <BookStructure
         book={book}
-        onChange={(sections) => updateBook(book.id, { sections })}
+        onChange={(sections) =>
+          scope === "library"
+            ? updateBook(book.id, { sections })
+            : updateImport(book.id, { sections })
+        }
+        scope={scope}
       />
 
-      <BookActions
-        convertedEpubUri={book.convertedEpubUri}
-        exportedUri={book.exportedUri}
-        format={book.format}
+      <LibraryBookActions
+        book={book}
         isConverting={isConverting}
         onConvert={() => {
           setIsConverting(true);
           void convertPdfToEpub(book.id).finally(() => setIsConverting(false));
         }}
-        onDelete={() => confirmDelete(book, deleteBook, () => router.back())}
+        onDelete={() =>
+          confirmDelete(book, deleteBook, () => {
+            void router.back();
+          })
+        }
         onExport={() => void exportBook(book.id)}
+        scope={scope}
       />
     </KeyboardAwareScrollView>
+  );
+}
+
+function LibraryBookActions({
+  book,
+  isConverting,
+  onConvert,
+  onDelete,
+  onExport,
+  scope,
+}: {
+  book: BookRecord;
+  isConverting: boolean;
+  onConvert: () => void;
+  onDelete: () => void;
+  onExport: () => void;
+  scope: BookScope;
+}) {
+  if (scope !== "library") return null;
+  return (
+    <BookActions
+      convertedEpubUri={book.convertedEpubUri}
+      exportedUri={book.exportedUri}
+      format={book.format}
+      isConverting={isConverting}
+      onConvert={onConvert}
+      onDelete={onDelete}
+      onExport={onExport}
+    />
   );
 }
 
@@ -81,11 +129,13 @@ function BookDetails({
   onChange,
   onChangeCover,
   onRead,
+  scope,
 }: {
   book: BookRecord;
   onChange: (update: Partial<BookRecord>) => void;
   onChangeCover: () => void;
   onRead: () => void;
+  scope: BookScope;
 }) {
   return (
     <>
@@ -95,7 +145,7 @@ function BookDetails({
         className="items-center"
         onPress={onChangeCover}
       >
-        <BookCover book={book} large />
+        <BookCover book={book} large scope={scope} />
         <Text className="text-primary mt-3 text-sm font-semibold">
           Change cover
         </Text>
@@ -120,15 +170,17 @@ function BookDetails({
 function BookStructure({
   book,
   onChange,
+  scope,
 }: {
   book: BookRecord;
   onChange: (sections: BookSection[]) => void;
+  scope: BookScope;
 }) {
   const router = useRouter();
   function editSection(section: BookSection) {
     router.push({
       pathname: "/book/[id]/section/[sectionId]",
-      params: { id: book.id, sectionId: section.id },
+      params: { id: book.id, scope, sectionId: section.id },
     });
   }
   function addSection() {

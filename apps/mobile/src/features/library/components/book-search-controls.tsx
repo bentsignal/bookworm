@@ -12,6 +12,7 @@ import type { BookRecord } from "@worm/ebook-core";
 import { normalizeEpubWhitespace } from "@worm/ebook-core";
 
 import type { BookSearchDocument } from "../book-search";
+import type { BookScope } from "~/db/catalog";
 import { useColor } from "~/hooks/use-color";
 import { extractPdfTextAsync } from "~/native/worm-pdf";
 import { findBookTextMatches, nextMatchIndex } from "../book-search";
@@ -22,16 +23,18 @@ export function BookSearchControls({
   onFocus,
   onNavigate,
   selected,
+  scope = "library",
 }: {
   book: BookRecord;
   onFocus: () => void;
   onNavigate: (position: number) => void;
   selected: number;
+  scope?: BookScope;
 }) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
   const input = useRef<TextInput>(null);
-  const { documents, error, loading } = useSearchDocuments(book);
+  const { documents, error, loading } = useSearchDocuments(book, scope);
   const deferredQuery = useDeferredValue(query);
   const matches = findBookTextMatches(documents, deferredQuery);
 
@@ -94,7 +97,7 @@ export function BookSearchControls({
   );
 }
 
-function useSearchDocuments(book: BookRecord) {
+function useSearchDocuments(book: BookRecord, scope: BookScope) {
   const epubDocuments = epubSearchDocuments(book);
   const [pdfDocuments, setPdfDocuments] = useState<BookSearchDocument[]>([]);
   const [error, setError] = useState(false);
@@ -104,7 +107,7 @@ function useSearchDocuments(book: BookRecord) {
   useEffect(() => {
     if (book.format !== "pdf") return;
     let active = true;
-    void pdfDocumentsFor(book)
+    void pdfDocumentsFor(book, scope)
       .then((documents) => {
         if (active) setPdfDocuments(documents);
       })
@@ -117,7 +120,7 @@ function useSearchDocuments(book: BookRecord) {
     return () => {
       active = false;
     };
-  }, [book]);
+  }, [book, scope]);
 
   return {
     documents: book.format === "pdf" ? pdfDocuments : epubDocuments,
@@ -279,13 +282,14 @@ function loadingSummary(format: BookRecord["format"]) {
   return format === "pdf" ? "Indexing PDF…" : "Searching…";
 }
 
-function pdfDocumentsFor(book: BookRecord) {
-  const cached = pdfDocumentCache.get(book.id);
+function pdfDocumentsFor(book: BookRecord, scope: BookScope) {
+  const key = `${scope}:${book.id}`;
+  const cached = pdfDocumentCache.get(key);
   if (cached) return cached;
-  const documents = extractPdfTextAsync(getSourceFile(book).uri).then((pages) =>
-    pages.map((text, index) => ({ position: index + 1, text })),
+  const documents = extractPdfTextAsync(getSourceFile(book, scope).uri).then(
+    (pages) => pages.map((text, index) => ({ position: index + 1, text })),
   );
-  pdfDocumentCache.set(book.id, documents);
+  pdfDocumentCache.set(key, documents);
   return documents;
 }
 

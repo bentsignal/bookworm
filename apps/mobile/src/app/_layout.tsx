@@ -8,6 +8,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 
+import { DatabaseProvider } from "~/db/database-provider";
 import { createNavigationTheme } from "~/features/theme/navigation-theme";
 import { useColor } from "~/hooks/use-color";
 
@@ -40,22 +41,24 @@ export default function RootLayout() {
       <KeyboardProvider statusBarTranslucent>
         <SafeAreaProvider>
           <ThemeProvider value={theme}>
-            <Stack
-              screenOptions={{
-                contentStyle: { backgroundColor: background },
-                headerBackButtonDisplayMode: "minimal",
-                headerShadowVisible: false,
-                headerStyle: { backgroundColor: background },
-                headerTintColor: foreground,
-              }}
-            >
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="book/[id]/index" />
-              <Stack.Screen name="book/[id]/read" />
-              <Stack.Screen name="book/[id]/section/[sectionId]" />
-            </Stack>
-            <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+            <DatabaseProvider>
+              <Stack
+                screenOptions={{
+                  contentStyle: { backgroundColor: background },
+                  headerBackButtonDisplayMode: "minimal",
+                  headerShadowVisible: false,
+                  headerStyle: { backgroundColor: background },
+                  headerTintColor: foreground,
+                }}
+              >
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="book/[id]/index" />
+                <Stack.Screen name="book/[id]/read" />
+                <Stack.Screen name="book/[id]/section/[sectionId]" />
+              </Stack>
+              <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+            </DatabaseProvider>
           </ThemeProvider>
         </SafeAreaProvider>
       </KeyboardProvider>

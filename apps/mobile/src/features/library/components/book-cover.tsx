@@ -2,6 +2,7 @@ import { Image, Text, View } from "react-native";
 
 import type { BookRecord } from "@worm/ebook-core";
 
+import type { BookScope } from "~/db/catalog";
 import { getCoverFile } from "../library-storage";
 
 const palettes = [
@@ -14,14 +15,16 @@ const palettes = [
 export function BookCover({
   book,
   large = false,
+  scope = "library",
 }: {
   book: BookRecord;
   large?: boolean;
+  scope?: BookScope;
 }) {
   const palette = palettes[hash(book.id) % palettes.length] ?? palettes[0];
   const [background, foreground, accent] = palette;
   const metrics = getMetrics(large);
-  const cover = getCoverFile(book);
+  const cover = getCoverFile(book, scope);
   if (cover?.exists) {
     return (
       <Image

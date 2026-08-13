@@ -49,7 +49,7 @@ export function BookTile({ book }: { book: BookRecord }) {
       className="min-w-0 active:opacity-70"
       onPress={() =>
         router.push({
-          pathname: "/book/[id]",
+          pathname: "/book/[id]/read",
           params: { id: book.id },
         })
       }

@@ -6,7 +6,7 @@ import { createStrictSyntax } from "@worm/eslint-config/syntax";
 
 export default defineConfig(
   {
-    ignores: [".expo/**", "expo-plugins/**"],
+    ignores: [".expo/**", "expo-plugins/**", "src/db/migrations/**"],
   },
   baseConfig,
   reactConfig,

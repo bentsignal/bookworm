@@ -7,12 +7,16 @@ import { useColor } from "~/hooks/use-color";
 export function AddBookDraftEditor({
   draft,
   onChange,
+  onEdit,
+  onPreview,
   onRemove,
 }: {
   draft: BookImportDraft;
   onChange: (
     update: Partial<Pick<BookImportDraft, "author" | "title">>,
   ) => void;
+  onEdit: () => void;
+  onPreview: () => void;
   onRemove: () => void;
 }) {
   const mutedForeground = useColor("muted-foreground");
@@ -69,7 +73,37 @@ export function AddBookDraftEditor({
           />
         </View>
       </View>
+      <View className="border-border flex-row border-t p-2">
+        <DraftAction label="Preview" onPress={onPreview} symbol="book.pages" />
+        <DraftAction
+          label="Edit"
+          onPress={onEdit}
+          symbol="slider.horizontal.3"
+        />
+      </View>
     </View>
+  );
+}
+
+function DraftAction({
+  label,
+  onPress,
+  symbol,
+}: {
+  label: string;
+  onPress: () => void;
+  symbol: "book.pages" | "slider.horizontal.3";
+}) {
+  const primary = useColor("primary");
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="active:bg-muted h-10 flex-1 flex-row items-center justify-center gap-2 rounded-xl"
+      onPress={onPress}
+    >
+      <SymbolView name={symbol} size={16} tintColor={primary} />
+      <Text className="text-primary text-sm font-semibold">{label}</Text>
+    </Pressable>
   );
 }
 

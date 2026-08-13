@@ -4,6 +4,7 @@ import { Stack, useRouter } from "expo-router";
 
 import type { BookRecord, BookSection } from "@worm/ebook-core";
 
+import type { BookScope } from "~/db/catalog";
 import {
   chapterLocationLabel,
   epubLocationCount,
@@ -20,28 +21,35 @@ type Boundary = "end" | "start";
 
 export function ChapterEditorScreen({
   id,
+  scope,
   sectionId,
 }: {
   id: string;
+  scope: BookScope;
   sectionId: string;
 }) {
-  const { books, updateBook } = useLibrary();
+  const { books, imports, updateBook, updateImport } = useLibrary();
   const router = useRouter();
-  const book = books.find((item) => item.id === id);
+  const book = (scope === "library" ? books : imports).find(
+    (item) => item.id === id,
+  );
   const section = book?.sections.find((item) => item.id === sectionId);
   if (!book || !section) return <MissingChapter />;
   return (
     <ChapterEditor
       book={book}
       onSave={(nextSection) => {
-        updateBook(book.id, {
+        const update = {
           sections: book.sections.map((item) =>
             item.id === nextSection.id ? nextSection : item,
           ),
-        });
+        };
+        if (scope === "library") updateBook(book.id, update);
+        else updateImport(book.id, update);
         router.back();
       }}
       section={section}
+      scope={scope}
     />
   );
 }
@@ -50,10 +58,12 @@ function ChapterEditor({
   book,
   onSave,
   section,
+  scope,
 }: {
   book: BookRecord;
   onSave: (section: BookSection) => void;
   section: BookSection;
+  scope: BookScope;
 }) {
   const initial = initialChapterRange(book, section);
   const [title, setTitle] = useState(section.title);
@@ -91,7 +101,12 @@ function ChapterEditor({
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button onPress={save}>Save</Stack.Toolbar.Button>
       </Stack.Toolbar>
-      <ChapterPreview book={book} onSelect={setSelected} selected={selected} />
+      <ChapterPreview
+        book={book}
+        onSelect={setSelected}
+        scope={scope}
+        selected={selected}
+      />
       <ChapterControlsPanel
         expanded={controlsExpanded}
         onExpandedChange={setControlsExpanded}
@@ -108,6 +123,7 @@ function ChapterEditor({
           onFocus={() => setControlsExpanded(true)}
           onNavigate={setSelected}
           selected={selected}
+          scope={scope}
         />
         <BoundaryPicker
           boundary={boundary}

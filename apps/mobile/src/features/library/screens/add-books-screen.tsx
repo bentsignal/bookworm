@@ -1,12 +1,13 @@
 // eslint-disable-next-line no-restricted-imports -- A stable focus callback prevents the file picker reopening during input rerenders.
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 
-import type { BookImportDraft } from "../library-context";
+import type { BookRecord } from "@worm/ebook-core";
+
 import { useColor } from "~/hooks/use-color";
 import { AddBookDraftEditor } from "../components/add-book-draft-editor";
 import { useLibrary } from "../library-context";
@@ -14,46 +15,50 @@ import { useLibrary } from "../library-context";
 export function AddBooksScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { addBooksToLibrary, isImporting, pickBookDrafts } = useLibrary();
-  const [drafts, setDrafts] = useState<BookImportDraft[]>([]);
+  const {
+    addBooksToLibrary,
+    deleteImport,
+    imports,
+    isImporting,
+    pickBookDrafts,
+    updateImport,
+  } = useLibrary();
   const isPicking = useRef(false);
-  const shouldOpenPicker = useRef(true);
+  const offeredPicker = useRef(false);
   const activityColor = useColor("primary");
   const activityForeground = useColor("primary-foreground");
 
   async function chooseBooks() {
     if (isPicking.current) return;
     isPicking.current = true;
-    const picked = await pickBookDrafts();
-    if (picked.length > 0) setDrafts((current) => [...current, ...picked]);
+    await pickBookDrafts();
     isPicking.current = false;
   }
 
   useFocusEffect(
     useCallback(() => {
-      const frame = shouldOpenPicker.current
-        ? requestAnimationFrame(
-            () => void pickDrafts(pickBookDrafts, isPicking, setDrafts),
-          )
-        : undefined;
-      shouldOpenPicker.current = false;
+      const frame =
+        !offeredPicker.current && imports.length === 0
+          ? requestAnimationFrame(
+              () => void pickDrafts(pickBookDrafts, isPicking),
+            )
+          : undefined;
+      offeredPicker.current = true;
       return () => {
         if (frame !== undefined) cancelAnimationFrame(frame);
-        shouldOpenPicker.current = true;
       };
-    }, [pickBookDrafts]),
+    }, [imports.length, pickBookDrafts]),
   );
 
   async function addToLibrary() {
-    if (!(await addBooksToLibrary(drafts))) return;
-    setDrafts([]);
-    shouldOpenPicker.current = true;
+    if (!(await addBooksToLibrary())) return;
+    offeredPicker.current = false;
     router.navigate("/(tabs)/(library)");
   }
 
   const canAdd =
-    drafts.length > 0 &&
-    drafts.every(({ title }) => title.trim().length > 0) &&
+    imports.length > 0 &&
+    imports.every(({ title }) => title.trim().length > 0) &&
     !isImporting;
 
   return (
@@ -73,12 +78,25 @@ export function AddBooksScreen() {
           activityColor={activityColor}
           activityForeground={activityForeground}
           canAdd={canAdd}
-          drafts={drafts}
+          drafts={imports}
           isImporting={isImporting}
           onAdd={() => void addToLibrary()}
           onChoose={() => void chooseBooks()}
           onChooseMore={() => void chooseBooks()}
-          setDrafts={setDrafts}
+          onChange={(id, update) => updateImport(id, update)}
+          onRemove={deleteImport}
+          onEdit={(id) =>
+            router.push({
+              pathname: "/book/[id]",
+              params: { id, scope: "import" },
+            })
+          }
+          onPreview={(id) =>
+            router.push({
+              pathname: "/book/[id]/read",
+              params: { id, scope: "import" },
+            })
+          }
         />
       </KeyboardAwareScrollView>
     </View>
@@ -94,17 +112,23 @@ function DraftContent({
   onAdd,
   onChoose,
   onChooseMore,
-  setDrafts,
+  onChange,
+  onEdit,
+  onPreview,
+  onRemove,
 }: {
   activityColor: string;
   activityForeground: string;
   canAdd: boolean;
-  drafts: BookImportDraft[];
+  drafts: BookRecord[];
   isImporting: boolean;
   onAdd: () => void;
   onChoose: () => void;
   onChooseMore: () => void;
-  setDrafts: React.Dispatch<React.SetStateAction<BookImportDraft[]>>;
+  onChange: (id: string, update: Partial<BookRecord>) => void;
+  onEdit: (id: string) => void;
+  onPreview: (id: string) => void;
+  onRemove: (id: string) => void;
 }) {
   if (isImporting && drafts.length === 0) {
     return (
@@ -125,18 +149,10 @@ function DraftContent({
           <AddBookDraftEditor
             draft={draft}
             key={draft.id}
-            onChange={(update) =>
-              setDrafts((current) =>
-                current.map((item) =>
-                  item.id === draft.id ? { ...item, ...update } : item,
-                ),
-              )
-            }
-            onRemove={() =>
-              setDrafts((current) =>
-                current.filter((item) => item.id !== draft.id),
-              )
-            }
+            onChange={(update) => onChange(draft.id, update)}
+            onEdit={() => onEdit(draft.id)}
+            onPreview={() => onPreview(draft.id)}
+            onRemove={() => onRemove(draft.id)}
           />
         ))}
       </View>
@@ -247,14 +263,12 @@ function DraftsHeader({
 }
 
 async function pickDrafts(
-  pickBookDrafts: () => Promise<BookImportDraft[]>,
+  pickBookDrafts: () => Promise<boolean>,
   isPicking: React.MutableRefObject<boolean>,
-  setDrafts: React.Dispatch<React.SetStateAction<BookImportDraft[]>>,
 ) {
   if (isPicking.current) return;
   isPicking.current = true;
-  const picked = await pickBookDrafts();
-  if (picked.length > 0) setDrafts((current) => [...current, ...picked]);
+  await pickBookDrafts();
   isPicking.current = false;
 }
 
