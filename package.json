@@ -7,6 +7,11 @@
     "pnpm": "^9.15.4"
   },
   "packageManager": "pnpm@9.15.4",
+  "pnpm": {
+    "patchedDependencies": {
+      "react-native-screens@4.26.2": "patches/react-native-screens@4.26.2.patch"
+    }
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "portless proxy start --lan && turbo run dev --parallel --continue",
