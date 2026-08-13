@@ -28,7 +28,13 @@ export function LibrarySearchScreen() {
 
   return (
     <View className="bg-background flex-1">
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen
+        options={{
+          headerLargeTitle: false,
+          headerTransparent: true,
+          title: "",
+        }}
+      />
       <Stack.SearchBar
         autoCapitalize="none"
         hideNavigationBar

@@ -8,7 +8,10 @@ export default function SearchLayout() {
     <Stack
       screenOptions={{
         contentStyle: { backgroundColor: background },
-        headerShown: false,
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: "transparent" },
+        headerTitle: "",
+        headerTransparent: true,
       }}
     />
   );
