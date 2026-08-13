@@ -1,25 +1,56 @@
 import { useState } from "react";
 import { FlatList, Text, View } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 
 import type { BookRecord } from "@worm/ebook-core";
 
 import { useLibrary } from "../library-context";
+import {
+  blurNativeLibrarySearch,
+  focusNativeLibrarySearch,
+  nativeLibrarySearchRef,
+} from "../native-library-search";
 import { BookTile } from "./library-screen";
 
 export function LibrarySearchScreen() {
-  const { books } = useLibrary();
+  const router = useRouter();
+  const { books, importBooks, isImporting } = useLibrary();
   const [query, setQuery] = useState("");
   const results = searchBooks(books, query);
+  const importLabel = isImporting ? "Adding…" : "Add books";
+
+  useFocusEffect(() => {
+    const frame = requestAnimationFrame(focusNativeLibrarySearch);
+    return () => {
+      cancelAnimationFrame(frame);
+      blurNativeLibrarySearch();
+    };
+  });
 
   return (
     <View className="bg-background flex-1">
-      <Stack.Screen options={{ headerLargeTitle: false, title: "Search" }} />
+      <Stack.Screen options={{ headerLargeTitle: false, title: "Library" }} />
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          disabled={isImporting}
+          onPress={() => void importBooks()}
+        >
+          {importLabel}
+        </Stack.Toolbar.Button>
+      </Stack.Toolbar>
       <Stack.SearchBar
         autoCapitalize="none"
+        hideNavigationBar
+        hideWhenScrolling={false}
+        obscureBackground={false}
         onChangeText={({ nativeEvent }) => setQuery(nativeEvent.text)}
+        onCancelButtonPress={() => {
+          setQuery("");
+          router.navigate("/(tabs)/(library)");
+        }}
         placeholder="Titles, authors, and chapters"
         placement="automatic"
+        ref={nativeLibrarySearchRef}
       />
       <FlatList
         columnWrapperClassName="gap-4"

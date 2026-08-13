@@ -1,5 +1,9 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 
+import {
+  blurNativeLibrarySearch,
+  focusNativeLibrarySearch,
+} from "~/features/library/native-library-search";
 import { useColor } from "~/hooks/use-color";
 
 export default function TabLayout() {
@@ -34,9 +38,12 @@ export default function TabLayout() {
       <NativeTabs.Trigger
         name="(search)"
         contentStyle={{ backgroundColor: background }}
+        listeners={{
+          blur: blurNativeLibrarySearch,
+          focus: focusNativeLibrarySearch,
+        }}
         role="search"
       >
-        <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
         <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
