@@ -61,7 +61,6 @@
     "@worm/prettier-config": "workspace:*",
     "@worm/tailwind-config": "workspace:*",
     "@worm/tsconfig": "workspace:*",
-    "babel-plugin-inline-import": "^3.0.0",
     "drizzle-kit": "^0.31.4",
     "eslint": "catalog:",
     "prettier": "catalog:",

@@ -6,7 +6,7 @@ import { loadLibrary } from "~/features/library/library-storage";
 import { useColor } from "~/hooks/use-color";
 import { migrateLegacyBooks } from "./catalog";
 import { db } from "./database";
-import migrations from "./migrations/migrations";
+import migrations from "./migrations";
 
 export function DatabaseProvider({ children }: { children: React.ReactNode }) {
   const primary = useColor("primary");

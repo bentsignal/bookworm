@@ -38,8 +38,6 @@ import {
   refreshEpubMetadata,
 } from "./library-storage";
 
-/* eslint-disable max-lines */
-
 const listeners = new Set<() => void>();
 const libraryQuerySet = libraryQueries();
 const importQuerySet = importQueries();

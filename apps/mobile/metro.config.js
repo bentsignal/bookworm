@@ -18,8 +18,6 @@ config.resolver.nodeModulesPaths = [
 ];
 
 config.resolver.unstable_enablePackageExports = true;
-config.resolver.sourceExts.push("sql");
-
 /** @type {import('expo/metro-config').MetroConfig} */
 module.exports = withUniwindConfig(config, {
   cssEntryFile: "./src/styles.css",
