@@ -1,21 +1,19 @@
 // eslint-disable-next-line no-restricted-imports -- A stable focus callback prevents the file picker reopening during input rerenders.
 import { useCallback, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { SymbolView } from "expo-symbols";
 
 import type { BookImportDraft } from "../library-context";
 import { useColor } from "~/hooks/use-color";
+import { AddBookDraftEditor } from "../components/add-book-draft-editor";
 import { useLibrary } from "../library-context";
 
 export function AddBooksScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { addBooksToLibrary, isImporting, pickBookDrafts } = useLibrary();
   const [drafts, setDrafts] = useState<BookImportDraft[]>([]);
   const isPicking = useRef(false);
@@ -60,51 +58,52 @@ export function AddBooksScreen() {
 
   return (
     <View className="bg-background flex-1">
-      <Stack.Screen options={{ title: "Add books" }} />
-      <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
-          disabled={isImporting}
-          onPress={() => void chooseBooks()}
-        >
-          Choose more
-        </Stack.Toolbar.Button>
-      </Stack.Toolbar>
+      <Stack.Screen options={{ headerShown: false }} />
       <KeyboardAwareScrollView
-        bottomOffset={108}
-        contentContainerClassName="grow px-5 pb-32 pt-5"
+        bottomOffset={28}
+        contentContainerClassName="grow px-5"
+        contentContainerStyle={{
+          paddingBottom: Math.max(insets.bottom + 108, 128),
+          paddingTop: insets.top + 12,
+        }}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
       >
         <DraftContent
           activityColor={activityColor}
+          activityForeground={activityForeground}
+          canAdd={canAdd}
           drafts={drafts}
           isImporting={isImporting}
+          onAdd={() => void addToLibrary()}
           onChoose={() => void chooseBooks()}
+          onChooseMore={() => void chooseBooks()}
           setDrafts={setDrafts}
         />
       </KeyboardAwareScrollView>
-      <AddBooksFooter
-        activityColor={activityForeground}
-        canAdd={canAdd}
-        count={drafts.length}
-        isImporting={isImporting}
-        onAdd={() => void addToLibrary()}
-      />
     </View>
   );
 }
 
 function DraftContent({
   activityColor,
+  activityForeground,
+  canAdd,
   drafts,
   isImporting,
+  onAdd,
   onChoose,
+  onChooseMore,
   setDrafts,
 }: {
   activityColor: string;
+  activityForeground: string;
+  canAdd: boolean;
   drafts: BookImportDraft[];
   isImporting: boolean;
+  onAdd: () => void;
   onChoose: () => void;
+  onChooseMore: () => void;
   setDrafts: React.Dispatch<React.SetStateAction<BookImportDraft[]>>;
 }) {
   if (isImporting && drafts.length === 0) {
@@ -119,30 +118,40 @@ function DraftContent({
   }
   if (drafts.length === 0) return <EmptyDrafts onChoose={onChoose} />;
   return (
-    <View className="gap-5">
-      {drafts.map((draft) => (
-        <DraftEditor
-          draft={draft}
-          key={draft.id}
-          onChange={(update) =>
-            setDrafts((current) =>
-              current.map((item) =>
-                item.id === draft.id ? { ...item, ...update } : item,
-              ),
-            )
-          }
-          onRemove={() =>
-            setDrafts((current) =>
-              current.filter((item) => item.id !== draft.id),
-            )
-          }
-        />
-      ))}
+    <View>
+      <DraftsHeader count={drafts.length} onChooseMore={onChooseMore} />
+      <View className="gap-4">
+        {drafts.map((draft) => (
+          <AddBookDraftEditor
+            draft={draft}
+            key={draft.id}
+            onChange={(update) =>
+              setDrafts((current) =>
+                current.map((item) =>
+                  item.id === draft.id ? { ...item, ...update } : item,
+                ),
+              )
+            }
+            onRemove={() =>
+              setDrafts((current) =>
+                current.filter((item) => item.id !== draft.id),
+              )
+            }
+          />
+        ))}
+      </View>
+      <AddToLibraryButton
+        activityColor={activityForeground}
+        canAdd={canAdd}
+        count={drafts.length}
+        isImporting={isImporting}
+        onAdd={onAdd}
+      />
     </View>
   );
 }
 
-function AddBooksFooter({
+function AddToLibraryButton({
   activityColor,
   canAdd,
   count,
@@ -155,22 +164,19 @@ function AddBooksFooter({
   isImporting: boolean;
   onAdd: () => void;
 }) {
-  if (count === 0) return null;
   return (
-    <View className="bg-background border-border absolute right-0 bottom-0 left-0 border-t px-5 pt-3 pb-8">
-      <Pressable
-        accessibilityRole="button"
-        className="bg-primary h-12 items-center justify-center rounded-full active:opacity-75 disabled:opacity-50"
-        disabled={!canAdd}
-        onPress={onAdd}
-      >
-        <AddButtonContent
-          activityColor={activityColor}
-          count={count}
-          isImporting={isImporting}
-        />
-      </Pressable>
-    </View>
+    <Pressable
+      accessibilityRole="button"
+      className="bg-primary mt-6 h-12 items-center justify-center rounded-full active:opacity-75 disabled:opacity-50"
+      disabled={!canAdd}
+      onPress={onAdd}
+    >
+      <AddButtonContent
+        activityColor={activityColor}
+        count={count}
+        isImporting={isImporting}
+      />
+    </Pressable>
   );
 }
 
@@ -192,95 +198,53 @@ function AddButtonContent({
 }
 
 function EmptyDrafts({ onChoose }: { onChoose: () => void }) {
+  const primary = useColor("primary");
   return (
-    <View className="flex-1 items-center justify-center px-8 pb-24">
-      <Text className="text-foreground font-serif text-3xl">Choose books</Text>
-      <Text className="text-muted-foreground mt-2 mb-7 text-center text-[15px] leading-6">
-        Pick EPUB or PDF files, then check their details before adding them.
-      </Text>
+    <View className="flex-1 items-center justify-center pb-2">
+      <View className="bg-muted mb-7 h-24 w-24 items-center justify-center rounded-full">
+        <SymbolView
+          fallback={<Text className="text-primary text-4xl">+</Text>}
+          name="books.vertical.fill"
+          size={43}
+          tintColor={primary}
+          type="hierarchical"
+        />
+      </View>
       <Pressable
         accessibilityRole="button"
-        className="border-border bg-card h-12 items-center justify-center rounded-full border px-6 active:opacity-70"
+        className="bg-primary h-12 min-w-44 items-center justify-center rounded-full px-7 active:opacity-75"
         onPress={onChoose}
       >
-        <Text className="text-foreground text-[15px] font-semibold">
+        <Text className="text-primary-foreground text-[15px] font-semibold">
           Choose books
         </Text>
       </Pressable>
-    </View>
-  );
-}
-
-function DraftEditor({
-  draft,
-  onChange,
-  onRemove,
-}: {
-  draft: BookImportDraft;
-  onChange: (
-    update: Partial<Pick<BookImportDraft, "author" | "title">>,
-  ) => void;
-  onRemove: () => void;
-}) {
-  return (
-    <View className="border-border bg-card rounded-2xl border p-4">
-      <View className="mb-4 flex-row items-start justify-between gap-4">
-        <View className="min-w-0 flex-1">
-          <Text className="text-foreground text-sm font-semibold uppercase">
-            {draft.format}
-          </Text>
-          <Text
-            className="text-muted-foreground mt-1 text-xs"
-            numberOfLines={1}
-          >
-            {draft.sourceFileName}
-          </Text>
-        </View>
-        <Pressable
-          accessibilityLabel={`Remove ${draft.title}`}
-          accessibilityRole="button"
-          className="px-1 py-0.5 active:opacity-60"
-          onPress={onRemove}
-        >
-          <Text className="text-destructive text-sm font-semibold">Remove</Text>
-        </Pressable>
-      </View>
-      <DraftField
-        label="Title"
-        onChange={(title) => onChange({ title })}
-        value={draft.title}
-      />
-      <View className="mt-4">
-        <DraftField
-          label="Author"
-          onChange={(author) => onChange({ author })}
-          value={draft.author ?? ""}
-        />
-      </View>
-    </View>
-  );
-}
-
-function DraftField({
-  label,
-  onChange,
-  value,
-}: {
-  label: string;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  return (
-    <View>
-      <Text className="text-muted-foreground mb-2 text-xs font-semibold tracking-widest uppercase">
-        {label}
+      <Text className="text-muted-foreground mt-3 text-[13px]">
+        EPUB or PDF
       </Text>
-      <TextInput
-        className="border-border bg-background text-foreground h-12 rounded-xl border px-4 text-[16px]"
-        onChangeText={onChange}
-        returnKeyType="done"
-        defaultValue={value}
-      />
+    </View>
+  );
+}
+
+function DraftsHeader({
+  count,
+  onChooseMore,
+}: {
+  count: number;
+  onChooseMore: () => void;
+}) {
+  return (
+    <View className="mb-5 flex-row items-center justify-between">
+      <Text className="text-foreground font-serif text-2xl">
+        {draftCountLabel(count)}
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        className="border-border bg-card h-10 items-center justify-center rounded-full border px-4 active:opacity-70"
+        onPress={onChooseMore}
+      >
+        <Text className="text-primary text-sm font-semibold">Choose more</Text>
+      </Pressable>
     </View>
   );
 }
@@ -299,4 +263,8 @@ async function pickDrafts(
 
 function addButtonLabel(count: number) {
   return count === 1 ? "Add to library" : `Add ${count} books to library`;
+}
+
+function draftCountLabel(count: number) {
+  return `${count} ${count === 1 ? "book" : "books"}`;
 }
