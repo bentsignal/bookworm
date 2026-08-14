@@ -13,7 +13,9 @@ import type { BookScope, ReadingProgress } from "~/db/catalog";
 import { getReadingProgress, saveReadingProgress } from "~/db/catalog";
 import { useColor } from "~/hooks/use-color";
 import { getPdfPageCountAsync, WormPdfView } from "~/native/worm-pdf";
+import { ChapterBrowserModal } from "../components/chapter-browser-modal";
 import { ChapterControlsPanel } from "../components/chapter-controls-panel";
+import { chapterWindowIndices } from "../epub-navigation";
 import { useLibrary } from "../library-context";
 import { getSourceFile } from "../library-storage";
 import {
@@ -137,7 +139,7 @@ function EpubReader({
   const [sectionIndex, setSectionIndex] = useState(
     initialPosition.sectionIndex,
   );
-  const [document, setDocument] = useState({ key: "", html: "" });
+  const [documents, setDocuments] = useState<Record<string, string>>({});
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState(
     Math.round(initialPosition.scrollProgress * 100),
@@ -146,9 +148,13 @@ function EpubReader({
     initialPosition.scrollProgress,
   );
   const [controlsExpanded, setControlsExpanded] = useState(false);
+  const [chaptersVisible, setChaptersVisible] = useState(false);
+  const [pendingSectionIndex, setPendingSectionIndex] = useState<number>();
   const section = sections[sectionIndex];
   const sectionProgress = useRef(new Map<string, number>());
-  const webView = useRef<WebView>(null);
+  const webViews = useRef(new Map<string, WebView>());
+  const loadedDocuments = useRef(new Set<string>());
+  const pendingNavigation = useRef<{ index: number; key: string } | null>(null);
   const isRestoring = useRef(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
@@ -161,35 +167,39 @@ function EpubReader({
   const themeKey = `${background}:${foreground}:${muted}`;
   const documentKey = readerDocumentKey(book, scope, section?.id, themeKey);
 
-  // eslint-disable-next-line no-restricted-syntax -- EPUB rendering synchronizes an external archive session with the active section.
+  const renderedIndices = useMemo(
+    () =>
+      chapterWindowIndices(sectionIndex, sections.length, pendingSectionIndex),
+    [pendingSectionIndex, sectionIndex, sections.length],
+  );
+
+  // eslint-disable-next-line no-restricted-syntax -- EPUB rendering synchronizes an external archive session with the visible and prepared sections.
   useEffect(() => {
     if (!section) return;
     let cancelled = false;
-    void getReaderDocument({
-      book,
-      section,
-      scope,
-      sourceUri,
-      theme: { background, foreground, muted },
-      themeKey,
-    })
-      .then((html) => {
-        if (!cancelled) setDocument({ key: documentKey, html });
+    for (const index of renderedIndices) {
+      const renderedSection = sections[index];
+      if (!renderedSection) continue;
+      const key = readerDocumentKey(book, scope, renderedSection.id, themeKey);
+      const cached = epubResolvedDocumentCache.get(key);
+      if (cached) continue;
+      void getReaderDocument({
+        book,
+        section: renderedSection,
+        scope,
+        sourceUri,
+        theme: { background, foreground, muted },
+        themeKey,
       })
-      .then(() =>
-        preloadAdjacentSections({
-          book,
-          index: sectionIndex,
-          scope,
-          sections,
-          sourceUri,
-          theme: { background, foreground, muted },
-          themeKey,
-        }),
-      )
-      .catch((reason: unknown) => {
-        if (!cancelled) setError(errorMessage(reason));
-      });
+        .then((html) => {
+          if (!cancelled) {
+            setDocuments((current) => addDocument(current, key, html));
+          }
+        })
+        .catch((reason: unknown) => {
+          if (!cancelled) setError(errorMessage(reason));
+        });
+    }
     return () => {
       cancelled = true;
     };
@@ -205,7 +215,20 @@ function EpubReader({
     sections,
     sourceUri,
     themeKey,
+    renderedIndices,
   ]);
+
+  // eslint-disable-next-line no-restricted-syntax -- A prepared WebView receives its saved position as soon as it becomes active.
+  useEffect(() => {
+    if (!loadedDocuments.current.has(documentKey)) return;
+    isRestoring.current = true;
+    const frame = requestAnimationFrame(() => {
+      webViews.current
+        .get(documentKey)
+        ?.injectJavaScript(epubScrollRestoreScript(restoreProgress));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [documentKey, restoreProgress]);
 
   // eslint-disable-next-line no-restricted-syntax -- Unmount cleanup flushes the last external reader position to SQLite.
   useEffect(
@@ -222,66 +245,111 @@ function EpubReader({
   if (!section) {
     return <ReaderError format="EPUB" message="No chapters are included." />;
   }
-  if (document.key !== documentKey) return <ReaderLoading color={primary} />;
+  const currentDocument =
+    documents[documentKey] ?? epubResolvedDocumentCache.get(documentKey);
+  if (!currentDocument) return <ReaderLoading color={primary} />;
   return (
     <View className="flex-1">
-      <WebView
-        ref={webView}
-        allowFileAccess={false}
-        allowsLinkPreview={false}
-        bounces
-        containerStyle={{ backgroundColor: background }}
-        decelerationRate="normal"
-        javaScriptEnabled
-        key={document.key}
-        onLoadEnd={() => {
-          webView.current?.injectJavaScript(
-            epubScrollRestoreScript(restoreProgress),
+      <View className="flex-1">
+        {renderedIndices.map((index) => {
+          const renderedSection = sections[index];
+          if (!renderedSection) return null;
+          const key = readerDocumentKey(
+            book,
+            scope,
+            renderedSection.id,
+            themeKey,
           );
-        }}
-        onLoadStart={() => {
-          isRestoring.current = true;
-        }}
-        onMessage={({ nativeEvent }) => {
-          if (nativeEvent.data === EPUB_RESTORE_COMPLETE_MESSAGE) {
-            isRestoring.current = false;
-          }
-        }}
-        onScroll={({ nativeEvent }) => {
-          const maximum =
-            nativeEvent.contentSize.height -
-            nativeEvent.layoutMeasurement.height;
-          if (maximum <= 0 || isRestoring.current) return;
-          const next = Math.max(
-            0,
-            Math.min(1, nativeEvent.contentOffset.y / maximum),
+          const html = documents[key] ?? epubResolvedDocumentCache.get(key);
+          if (!html) return null;
+          const active = index === sectionIndex;
+          return (
+            <View
+              accessibilityElementsHidden={!active}
+              importantForAccessibility={
+                active ? "auto" : "no-hide-descendants"
+              }
+              key={key}
+              pointerEvents={active ? "auto" : "none"}
+              className="absolute inset-0"
+              style={{ opacity: active ? 1 : 0 }}
+            >
+              <WebView
+                ref={(instance) => {
+                  if (instance) webViews.current.set(key, instance);
+                  else webViews.current.delete(key);
+                }}
+                allowFileAccess={false}
+                allowsLinkPreview={false}
+                bounces
+                containerStyle={{ backgroundColor: background }}
+                decelerationRate="normal"
+                javaScriptEnabled
+                onLoadEnd={() => {
+                  loadedDocuments.current.add(key);
+                  const saved = active
+                    ? restoreProgress
+                    : (sectionProgress.current.get(renderedSection.id) ?? 0);
+                  webViews.current
+                    .get(key)
+                    ?.injectJavaScript(epubScrollRestoreScript(saved));
+                  const pending = pendingNavigation.current;
+                  if (pending?.key === key) {
+                    commitSectionChange(pending.index);
+                  }
+                }}
+                onLoadStart={() => {
+                  if (active) isRestoring.current = true;
+                }}
+                onMessage={({ nativeEvent }) => {
+                  if (
+                    active &&
+                    nativeEvent.data === EPUB_RESTORE_COMPLETE_MESSAGE
+                  ) {
+                    isRestoring.current = false;
+                  }
+                }}
+                onScroll={({ nativeEvent }) => {
+                  if (!active) return;
+                  const maximum =
+                    nativeEvent.contentSize.height -
+                    nativeEvent.layoutMeasurement.height;
+                  if (maximum <= 0 || isRestoring.current) return;
+                  const next = Math.max(
+                    0,
+                    Math.min(1, nativeEvent.contentOffset.y / maximum),
+                  );
+                  sectionProgress.current.set(renderedSection.id, next);
+                  latestProgress.current = {
+                    scrollProgress: next,
+                    sectionId: renderedSection.id,
+                    sectionIndex: index,
+                  };
+                  setProgress(Math.round(next * 100));
+                  if (scope !== "library") return;
+                  if (saveTimer.current) clearTimeout(saveTimer.current);
+                  saveTimer.current = setTimeout(() => {
+                    saveReadingProgress(book.id, {
+                      scrollProgress: next,
+                      sectionId: renderedSection.id,
+                      sectionIndex: index,
+                    });
+                  }, 350);
+                }}
+                onShouldStartLoadWithRequest={({ url }) =>
+                  url.startsWith("about:blank")
+                }
+                originWhitelist={["about:blank"]}
+                scrollEnabled={active}
+                setSupportMultipleWindows={false}
+                source={{ html }}
+                style={{ backgroundColor: background }}
+                textInteractionEnabled={active}
+              />
+            </View>
           );
-          sectionProgress.current.set(section.id, next);
-          latestProgress.current = {
-            scrollProgress: next,
-            sectionId: section.id,
-            sectionIndex,
-          };
-          setProgress(Math.round(next * 100));
-          if (scope !== "library") return;
-          if (saveTimer.current) clearTimeout(saveTimer.current);
-          saveTimer.current = setTimeout(() => {
-            saveReadingProgress(book.id, {
-              scrollProgress: next,
-              sectionId: section.id,
-              sectionIndex,
-            });
-          }, 350);
-        }}
-        onShouldStartLoadWithRequest={({ url }) =>
-          url.startsWith("about:blank")
-        }
-        originWhitelist={["about:blank"]}
-        setSupportMultipleWindows={false}
-        source={{ html: document.html }}
-        style={{ backgroundColor: background }}
-        textInteractionEnabled
-      />
+        })}
+      </View>
       <ReaderControls
         book={book}
         expanded={controlsExpanded}
@@ -289,50 +357,65 @@ function EpubReader({
           <EpubNavigation
             count={sections.length}
             index={sectionIndex}
-            onChange={(index) => {
-              const nextSection = sections[index];
-              const nextProgress = nextSection
-                ? (sectionProgress.current.get(nextSection.id) ?? 0)
-                : 0;
-              setProgress(Math.round(nextProgress * 100));
-              isRestoring.current = true;
-              setRestoreProgress(nextProgress);
-              if (nextSection) {
-                const nextKey = readerDocumentKey(
-                  book,
-                  scope,
-                  nextSection.id,
-                  themeKey,
-                );
-                const cachedDocument = epubResolvedDocumentCache.get(nextKey);
-                if (cachedDocument) {
-                  setDocument({ key: nextKey, html: cachedDocument });
-                }
-              }
-              setSectionIndex(index);
-              latestProgress.current = {
-                scrollProgress: nextProgress,
-                sectionId: nextSection?.id,
-                sectionIndex: index,
-              };
-              if (scope === "library" && nextSection) {
-                saveReadingProgress(book.id, {
-                  scrollProgress: nextProgress,
-                  sectionId: nextSection.id,
-                  sectionIndex: index,
-                });
-              }
-            }}
+            onChange={prepareSectionChange}
             progress={progress}
             title={section.title}
             onToggle={() => setControlsExpanded(!controlsExpanded)}
           />
         }
         onExpandedChange={setControlsExpanded}
+        onShowChapters={() => setChaptersVisible(true)}
         scope={scope}
+      />
+      <ChapterBrowserModal
+        currentIndex={sectionIndex}
+        onClose={() => setChaptersVisible(false)}
+        onSelect={(index) => {
+          setChaptersVisible(false);
+          setControlsExpanded(false);
+          prepareSectionChange(index);
+        }}
+        sections={sections}
+        visible={chaptersVisible}
       />
     </View>
   );
+
+  function prepareSectionChange(index: number) {
+    const nextSection = sections[index];
+    if (!nextSection || index === sectionIndex) return;
+    const key = readerDocumentKey(book, scope, nextSection.id, themeKey);
+    if (loadedDocuments.current.has(key)) {
+      commitSectionChange(index);
+      return;
+    }
+    pendingNavigation.current = { index, key };
+    setPendingSectionIndex(index);
+  }
+
+  function commitSectionChange(index: number) {
+    const nextSection = sections[index];
+    if (!nextSection) return;
+    const nextProgress = sectionProgress.current.get(nextSection.id) ?? 0;
+    setProgress(Math.round(nextProgress * 100));
+    isRestoring.current = true;
+    setRestoreProgress(nextProgress);
+    setSectionIndex(index);
+    setPendingSectionIndex(undefined);
+    pendingNavigation.current = null;
+    latestProgress.current = {
+      scrollProgress: nextProgress,
+      sectionId: nextSection.id,
+      sectionIndex: index,
+    };
+    if (scope === "library") {
+      saveReadingProgress(book.id, {
+        scrollProgress: nextProgress,
+        sectionId: nextSection.id,
+        sectionIndex: index,
+      });
+    }
+  }
 }
 
 function ReaderControls({
@@ -341,6 +424,7 @@ function ReaderControls({
   expanded,
   header,
   onExpandedChange,
+  onShowChapters,
   scope,
 }: {
   book: BookRecord;
@@ -348,9 +432,11 @@ function ReaderControls({
   expanded: boolean;
   header?: React.ReactNode;
   onExpandedChange: (expanded: boolean) => void;
+  onShowChapters?: () => void;
   scope: BookScope;
 }) {
   const router = useRouter();
+  const foreground = useColor("foreground");
   return (
     <ChapterControlsPanel
       expanded={expanded}
@@ -358,6 +444,7 @@ function ReaderControls({
       onExpandedChange={onExpandedChange}
     >
       <ReaderBookDetails book={book} detail={detail} />
+      <ReaderChapterButton foreground={foreground} onPress={onShowChapters} />
       <Pressable
         accessibilityRole="button"
         className="bg-primary h-11 items-center justify-center rounded-full active:opacity-75"
@@ -374,6 +461,40 @@ function ReaderControls({
       </Pressable>
     </ChapterControlsPanel>
   );
+}
+
+function ReaderChapterButton({
+  foreground,
+  onPress,
+}: {
+  foreground: string;
+  onPress: (() => void) | undefined;
+}) {
+  if (!onPress) return null;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="border-border h-11 flex-row items-center justify-center gap-2 rounded-full border active:opacity-75"
+      onPress={onPress}
+    >
+      <SymbolView
+        name="list.bullet"
+        size={15}
+        tintColor={foreground}
+        weight="semibold"
+      />
+      <Text className="text-foreground text-sm font-semibold">Chapters</Text>
+    </Pressable>
+  );
+}
+
+function addDocument(
+  documents: Record<string, string>,
+  key: string,
+  html: string,
+) {
+  if (documents[key] === html) return documents;
+  return { ...documents, [key]: html };
 }
 
 function ReaderBookDetails({
@@ -510,19 +631,6 @@ async function getReaderDocument({
   return promise;
 }
 
-async function preloadAdjacentSections({
-  index,
-  sections,
-  ...input
-}: ReaderPreloadInput) {
-  const adjacent = [sections[index - 1], sections[index + 1]].filter(
-    (section) => section !== undefined,
-  );
-  await Promise.allSettled(
-    adjacent.map((section) => getReaderDocument({ ...input, section })),
-  );
-}
-
 function getReaderSession(
   book: BookRecord,
   scope: BookScope,
@@ -583,11 +691,6 @@ interface ReaderDocumentInput {
   sourceUri: string;
   theme: { background: string; foreground: string; muted: string };
   themeKey: string;
-}
-
-interface ReaderPreloadInput extends Omit<ReaderDocumentInput, "section"> {
-  index: number;
-  sections: BookRecord["sections"];
 }
 
 const epubSessionCache = new Map<string, Promise<EpubReaderSession>>();
