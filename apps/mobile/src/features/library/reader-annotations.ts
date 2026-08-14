@@ -13,8 +13,45 @@ export interface ReaderAnnotationMessage {
   type: "annotation-press";
 }
 
+export interface ReaderSelectionStateMessage {
+  hasHighlight: boolean;
+  type: "selection-state";
+}
+
 export type ReaderAnnotationEvent =
-  ReaderAnnotationMessage | ReaderSelectionMessage;
+  | ReaderAnnotationMessage
+  | ReaderSelectionMessage
+  | ReaderSelectionStateMessage;
+
+export function readerSelectionObserverScript() {
+  return `(function () {
+    if (window.__wormSelectionObserver) return;
+    function publishSelectionState() {
+      window.clearTimeout(window.__wormSelectionTimer);
+      window.__wormSelectionTimer = window.setTimeout(function () {
+        var root = document.getElementById('worm-reader-content');
+        var selection = window.getSelection();
+        var hasHighlight = false;
+        if (root && selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+          var range = selection.getRangeAt(0);
+          if (root.contains(range.commonAncestorContainer)) {
+            Array.prototype.some.call(root.querySelectorAll('mark[data-worm-kind="highlight"]'), function (mark) {
+              if (!range.intersectsNode(mark)) return false;
+              hasHighlight = true;
+              return true;
+            });
+          }
+        }
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          hasHighlight: hasHighlight,
+          type: 'selection-state'
+        }));
+      }, 0);
+    }
+    document.addEventListener('selectionchange', publishSelectionState);
+    window.__wormSelectionObserver = true;
+  })(); true;`;
+}
 
 export function readerSelectionScript(
   action: "highlight" | "note" | "unhighlight",
@@ -130,6 +167,16 @@ export function parseReaderAnnotationEvent(value: string) {
         id: parsed.id,
         type: "annotation-press",
       } satisfies ReaderAnnotationMessage;
+    }
+    if (
+      parsed.type === "selection-state" &&
+      "hasHighlight" in parsed &&
+      typeof parsed.hasHighlight === "boolean"
+    ) {
+      return {
+        hasHighlight: parsed.hasHighlight,
+        type: "selection-state",
+      } satisfies ReaderSelectionStateMessage;
     }
     if (
       parsed.type === "selection" &&

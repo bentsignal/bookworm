@@ -8,10 +8,20 @@ import { useColor } from "~/hooks/use-color";
 
 export default function TabLayout() {
   const background = useColor("background");
+  const mutedForeground = useColor("muted-foreground");
   const primary = useColor("primary");
+  const primaryForeground = useColor("primary-foreground");
   return (
     <NativeTabs
       backgroundColor={background}
+      iconColor={{
+        default: mutedForeground,
+        selected: primaryForeground,
+      }}
+      labelStyle={{
+        default: { color: mutedForeground },
+        selected: { color: primaryForeground },
+      }}
       minimizeBehavior="onScrollDown"
       tintColor={primary}
     >

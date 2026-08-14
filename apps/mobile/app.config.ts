@@ -6,9 +6,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: "worm",
   owner: "directedbyshawn",
   scheme: "worm",
-  version: "0.1.23",
+  version: "0.1.24",
   orientation: "portrait",
-  icon: "./assets/icon.png",
+  icon: "./assets/icons/icon-paper.png",
   userInterfaceStyle: "automatic",
   updates: { fallbackToCacheTimeout: 0 },
   assetBundlePatterns: ["**/*"],
@@ -19,10 +19,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   ios: {
-    buildNumber: "25",
+    buildNumber: "26",
     bundleIdentifier: "com.bentsignal.worm",
     supportsTablet: true,
-    icon: "./assets/icon.png",
+    icon: "./assets/icons/icon-paper.png",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       LSSupportsOpeningDocumentsInPlace: true,
@@ -30,11 +30,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
-    versionCode: 25,
+    versionCode: 26,
     package: "com.bentsignal.worm",
     adaptiveIcon: {
-      backgroundColor: "#08261e",
-      foregroundImage: "./assets/icon.png",
+      backgroundColor: "#eee5d3",
+      foregroundImage: "./assets/icons/icon-paper.png",
     },
   },
   experiments: {
@@ -48,10 +48,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "./expo-plugins/with-ios-alternate-icons.cjs",
       {
         icons: [
-          { name: "IconForest", path: "./assets/icon.png" },
+          { name: "IconForest", path: "./assets/icons/icon-forest.png" },
           { name: "IconNavy", path: "./assets/icons/icon-navy.png" },
           { name: "IconClay", path: "./assets/icons/icon-clay.png" },
           { name: "IconPlum", path: "./assets/icons/icon-plum.png" },
+          { name: "IconLight", path: "./assets/icons/icon-light.png" },
+          { name: "IconDark", path: "./assets/icons/icon-dark.png" },
+          { name: "IconPaper", path: "./assets/icons/icon-paper.png" },
         ],
       },
     ],

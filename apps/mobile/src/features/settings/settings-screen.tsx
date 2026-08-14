@@ -12,23 +12,43 @@ import { getAppIcon, setAppIcon } from "expo-icon-handler";
 import { Stack } from "expo-router";
 import { SymbolView } from "expo-symbols";
 
+import type { AppThemeKey } from "~/features/theme/app-appearance";
 import {
   appThemes,
   setAppTheme,
   useAppTheme,
 } from "~/features/theme/app-appearance";
 import { useColor } from "~/hooks/use-color";
-import iconForest from "../../../assets/icon.png";
 import iconClay from "../../../assets/icons/icon-clay.png";
+import iconDark from "../../../assets/icons/icon-dark.png";
+import iconForest from "../../../assets/icons/icon-forest.png";
+import iconLight from "../../../assets/icons/icon-light.png";
 import iconNavy from "../../../assets/icons/icon-navy.png";
+import iconPaper from "../../../assets/icons/icon-paper.png";
 import iconPlum from "../../../assets/icons/icon-plum.png";
 
 const appIcons = [
+  { image: iconPaper, label: "Paper", nativeName: "IconPaper" },
   { image: iconForest, label: "Forest", nativeName: "IconForest" },
   { image: iconNavy, label: "Ink", nativeName: "IconNavy" },
   { image: iconClay, label: "Clay", nativeName: "IconClay" },
   { image: iconPlum, label: "Plum", nativeName: "IconPlum" },
+  { image: iconLight, label: "Light", nativeName: "IconLight" },
+  { image: iconDark, label: "Dark", nativeName: "IconDark" },
 ];
+
+const themeRank = {
+  paper: 0,
+  forest: 1,
+  ink: 2,
+  clay: 3,
+  plum: 4,
+  light: 5,
+  dark: 6,
+} satisfies Record<AppThemeKey, number>;
+const themeOptions = [...appThemes].sort(
+  (left, right) => themeRank[left.key] - themeRank[right.key],
+);
 
 export function SettingsScreen() {
   return (
@@ -41,7 +61,7 @@ export function SettingsScreen() {
       <AppIconPicker />
       <StorageSettings />
       <Text className="text-muted-foreground mt-10 text-center text-xs">
-        bookworm 0.1.23
+        bookworm 0.1.24
       </Text>
     </ScrollView>
   );
@@ -59,7 +79,7 @@ function ThemePicker() {
         contentContainerClassName="gap-4 px-5 py-2"
         showsHorizontalScrollIndicator={false}
       >
-        {appThemes.map((item) => (
+        {themeOptions.map((item) => (
           <ThemeSwatch
             border={border}
             foreground={foreground}
@@ -120,7 +140,7 @@ function AppIconPicker() {
   const foreground = useColor("foreground");
   const [iconName, setIconName] = useState(() => getAppIcon());
   const selectedIcon =
-    iconName === "default" || iconName === "DEFAULT" ? "IconForest" : iconName;
+    iconName === "default" || iconName === "DEFAULT" ? "IconPaper" : iconName;
   return (
     <>
       <SettingsHeading className="mt-8">App icon</SettingsHeading>

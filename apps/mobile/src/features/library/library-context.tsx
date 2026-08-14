@@ -49,10 +49,14 @@ export type BookImportDraft = BookRecord;
 
 export function useLibrary() {
   const activity = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  const libraryBookRows = useLiveQuery(libraryQuerySet.books).data;
-  const librarySectionRows = useLiveQuery(libraryQuerySet.sections).data;
-  const importBookRows = useLiveQuery(importQuerySet.books).data;
-  const importSectionRows = useLiveQuery(importQuerySet.sections).data;
+  const libraryBooksResult = useLiveQuery(libraryQuerySet.books);
+  const librarySectionsResult = useLiveQuery(libraryQuerySet.sections);
+  const importBooksResult = useLiveQuery(importQuerySet.books);
+  const importSectionsResult = useLiveQuery(importQuerySet.sections);
+  const libraryBookRows = libraryBooksResult.data;
+  const librarySectionRows = librarySectionsResult.data;
+  const importBookRows = importBooksResult.data;
+  const importSectionRows = importSectionsResult.data;
   const books = useMemo(
     () => hydrateBooks(libraryBookRows, librarySectionRows),
     [libraryBookRows, librarySectionRows],
@@ -66,7 +70,12 @@ export function useLibrary() {
     books,
     imports,
     isImporting: activity.pendingImports.length > 0,
-    isReady: true,
+    isReady: Boolean(
+      libraryBooksResult.updatedAt &&
+      librarySectionsResult.updatedAt &&
+      importBooksResult.updatedAt &&
+      importSectionsResult.updatedAt,
+    ),
     addBooksToLibrary: () => addBooksToLibrary(imports),
     convertPdfToEpub: (id: string) => convertPdfToEpub(id, books),
     deleteBook: (id: string) => {

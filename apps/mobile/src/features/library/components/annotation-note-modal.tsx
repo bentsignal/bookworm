@@ -65,9 +65,13 @@ function NoteEditor({
   const note = useRef(initialValue);
   const [canSave, setCanSave] = useState(false);
   const background = useColor("background");
+  const border = useColor("border");
   const card = useColor("card");
   const foreground = useColor("foreground");
+  const muted = useColor("muted");
   const mutedForeground = useColor("muted-foreground");
+  const primary = useColor("primary");
+  const accent = useColor("accent");
   return (
     <Modal
       animationType="slide"
@@ -75,32 +79,37 @@ function NoteEditor({
       presentationStyle="formSheet"
       visible
     >
-      <SafeAreaView className="flex-1" style={{ backgroundColor: background }}>
-        <View className="border-border h-16 flex-row items-center justify-between border-b px-5">
-          <SheetButton label="Cancel" onPress={onClose} />
-          <Text className="text-foreground text-[17px] font-semibold">
-            {title}
-          </Text>
-          <SheetButton
-            disabled={!canSave}
-            label="Save"
-            onPress={() => {
-              if (canSave) onSave(note.current.trim());
-            }}
-          />
-        </View>
+      <SafeAreaView style={{ backgroundColor: background, flex: 1 }}>
+        <NoteEditorHeader
+          border={border}
+          canSave={canSave}
+          foreground={foreground}
+          onClose={onClose}
+          onSave={() => onSave(note.current.trim())}
+          primary={primary}
+          title={title}
+        />
         <KeyboardAwareScrollView
           bottomOffset={24}
           contentContainerClassName="p-5 pb-10"
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
         >
-          <Text className="text-muted-foreground text-sm leading-5">
-            “{quote}”
-          </Text>
+          <View
+            className="rounded-2xl px-4 py-3"
+            style={{ backgroundColor: muted }}
+          >
+            <Text
+              className="text-sm leading-5"
+              numberOfLines={4}
+              style={{ color: mutedForeground }}
+            >
+              “{quote}”
+            </Text>
+          </View>
           <TextInput
             autoFocus={!initialValue}
-            className="mt-5 min-h-40 rounded-2xl p-4 text-[16px]"
+            className="mt-4 min-h-44 rounded-2xl border p-4 text-[16px]"
             defaultValue={initialValue}
             multiline
             onChangeText={(value) => {
@@ -112,21 +121,63 @@ function NoteEditor({
             placeholder="Write a note…"
             placeholderTextColor={mutedForeground}
             selectionColor={foreground}
-            style={{ backgroundColor: card, color: foreground }}
+            style={{
+              backgroundColor: card,
+              borderColor: border,
+              color: foreground,
+            }}
             textAlignVertical="top"
           />
-          <DeleteNoteButton onDelete={onDelete} />
+          <DeleteNoteButton accent={accent} muted={muted} onDelete={onDelete} />
         </KeyboardAwareScrollView>
       </SafeAreaView>
     </Modal>
   );
 }
 
+function NoteEditorHeader({
+  border,
+  canSave,
+  foreground,
+  onClose,
+  onSave,
+  primary,
+  title,
+}: {
+  border: string;
+  canSave: boolean;
+  foreground: string;
+  onClose: () => void;
+  onSave: () => void;
+  primary: string;
+  title: string;
+}) {
+  return (
+    <View
+      className="h-16 flex-row items-center justify-between border-b px-4"
+      style={{ borderColor: border }}
+    >
+      <SheetButton color={primary} label="Cancel" onPress={onClose} />
+      <Text className="text-[17px] font-semibold" style={{ color: foreground }}>
+        {title}
+      </Text>
+      <SheetButton
+        color={primary}
+        disabled={!canSave}
+        label="Save"
+        onPress={onSave}
+      />
+    </View>
+  );
+}
+
 function SheetButton({
+  color,
   disabled = false,
   label,
   onPress,
 }: {
+  color: string;
   disabled?: boolean;
   label: string;
   onPress: () => void;
@@ -140,20 +191,33 @@ function SheetButton({
       onPress={onPress}
       style={{ opacity: disabled ? 0.35 : 1 }}
     >
-      <Text className="text-primary text-[16px] font-semibold">{label}</Text>
+      <Text className="text-[16px] font-semibold" style={{ color }}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
-function DeleteNoteButton({ onDelete }: { onDelete?: () => void }) {
+function DeleteNoteButton({
+  accent,
+  muted,
+  onDelete,
+}: {
+  accent: string;
+  muted: string;
+  onDelete?: () => void;
+}) {
   if (!onDelete) return null;
   return (
     <Pressable
       accessibilityRole="button"
-      className="bg-muted mt-8 h-11 items-center justify-center rounded-full active:opacity-75"
+      className="mt-8 h-11 items-center justify-center rounded-full active:opacity-75"
       onPress={onDelete}
+      style={{ backgroundColor: muted }}
     >
-      <Text className="text-accent text-sm font-semibold">Delete note</Text>
+      <Text className="text-sm font-semibold" style={{ color: accent }}>
+        Delete note
+      </Text>
     </Pressable>
   );
 }

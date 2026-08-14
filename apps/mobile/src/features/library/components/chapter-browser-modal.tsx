@@ -20,6 +20,7 @@ export function ChapterBrowserModal({
   visible: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const background = useColor("background");
   if (!visible) return null;
   return (
     <Modal
@@ -29,8 +30,11 @@ export function ChapterBrowserModal({
       visible
     >
       <View
-        className="bg-background flex-1"
-        style={{ paddingBottom: insets.bottom }}
+        style={{
+          backgroundColor: background,
+          flex: 1,
+          paddingBottom: insets.bottom,
+        }}
       >
         <ChapterBrowserHeader onClose={onClose} />
         <FlatList

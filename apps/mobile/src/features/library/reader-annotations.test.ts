@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyReaderAnnotationsScript,
   parseReaderAnnotationEvent,
+  readerSelectionObserverScript,
   readerSelectionScript,
 } from "./reader-annotations";
 
@@ -37,10 +38,18 @@ describe("reader annotations", () => {
         }),
       ),
     ).toMatchObject({ action: "unhighlight", startOffset: 1, endOffset: 8 });
+    expect(
+      parseReaderAnnotationEvent(
+        JSON.stringify({ hasHighlight: true, type: "selection-state" }),
+      ),
+    ).toEqual({ hasHighlight: true, type: "selection-state" });
   });
 
   it("builds scripts that capture and repaint stable text offsets", () => {
     expect(readerSelectionScript("highlight")).toContain("worm-reader-content");
+    const observerScript = readerSelectionObserverScript();
+    expect(observerScript).toContain("selectionchange");
+    expect(observerScript).toContain('mark[data-worm-kind="highlight"]');
     const script = applyReaderAnnotationsScript([
       {
         bookId: "book",

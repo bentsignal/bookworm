@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -11,8 +10,7 @@ import * as SystemUI from "expo-system-ui";
 import { DatabaseProvider } from "~/db/database-provider";
 import {
   initializeAppAppearance,
-  resolveAppColorScheme,
-  useAppTheme,
+  useAppColorScheme,
 } from "~/features/theme/app-appearance";
 import { createNavigationTheme } from "~/features/theme/navigation-theme";
 import { useColor } from "~/hooks/use-color";
@@ -29,9 +27,7 @@ export default function RootLayout() {
   const border = useColor("border");
   const foreground = useColor("foreground");
   const primary = useColor("primary");
-  const appTheme = useAppTheme();
-  const systemScheme = useColorScheme() === "dark" ? "dark" : "light";
-  const colorScheme = resolveAppColorScheme(appTheme, systemScheme);
+  const colorScheme = useAppColorScheme();
   const theme = createNavigationTheme(colorScheme, {
     background,
     border,

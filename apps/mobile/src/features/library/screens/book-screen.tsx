@@ -1,11 +1,19 @@
 import { useState } from "react";
-import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Redirect, Stack, useRouter } from "expo-router";
 
 import type { BookRecord, BookSection } from "@worm/ebook-core";
 
 import type { BookScope } from "~/db/catalog";
+import { useColor } from "~/hooks/use-color";
 import { BookActions, ReadButton } from "../components/book-actions";
 import { BookCover } from "../components/book-cover";
 import { SectionEditor } from "../components/section-editor";
@@ -15,10 +23,18 @@ import { useLibrary } from "../library-context";
 /* eslint-disable max-lines */
 
 export function BookScreen({ id, scope }: { id: string; scope: BookScope }) {
-  const { books, imports } = useLibrary();
+  const { books, imports, isReady } = useLibrary();
+  const primary = useColor("primary");
   const book = (scope === "library" ? books : imports).find(
     (item) => item.id === id,
   );
+  if (!isReady) {
+    return (
+      <View className="bg-background flex-1 items-center justify-center">
+        <ActivityIndicator color={primary} />
+      </View>
+    );
+  }
   if (!book) {
     return <Redirect href="/(tabs)/(library)" />;
   }

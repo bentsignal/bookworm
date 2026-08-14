@@ -1,18 +1,88 @@
-diff --git a/apple/RNCWebViewImpl.m b/apple/RNCWebViewImpl.m
-index 81e33cf..120303e 100644
 --- a/apple/RNCWebViewImpl.m
 +++ b/apple/RNCWebViewImpl.m
-@@ -90,8 +90,4 @@ - (BOOL)canPerformAction:(SEL)action
+@@ -25,6 +25,10 @@
+ 
+ NSString *const CUSTOM_SELECTOR = @"_CUSTOM_SELECTOR_";
+ 
++@interface RNCWebViewImpl (RNCMenuForwarding)
++- (void)tappedMenuItem:(NSString *)eventType;
++@end
++
+ #if TARGET_OS_IOS
+ // runtime trick to remove WKWebView keyboard default toolbar
+ // see: http://stackoverflow.com/questions/19033292/ios-7-uiwebview-keyboard-issue/19042279#19042279
+@@ -87,19 +91,64 @@
+       }
+   }
+ 
 -  if (!self.menuItems) {
 -      return [super canPerformAction:action withSender:sender];
--  }
--
++  NSString *sel = NSStringFromSelector(action);
++  if ([sel rangeOfString:CUSTOM_SELECTOR].location == 0) {
++      return YES;
+   }
+ 
 -  return NO;
 +  return [super canPerformAction:action withSender:sender];
  }
  - (void)buildMenuWithBuilder:(id<UIMenuBuilder>)builder API_AVAILABLE(ios(13.0))  {
++    [super buildMenuWithBuilder:builder];
      if (@available(iOS 16.0, *)) {
-@@ -303,7 +299,9 @@ - (UIMenu *)editMenuInteraction:(UIEditMenuInteraction *)interaction menuForCon
+-      if(self.menuItems){
+-        [builder removeMenuForIdentifier:UIMenuLookup];
++      if (!self.menuItems || self.menuItems.count == 0) {
++        return;
+       }
++      NSMutableArray<UICommand *> *commands = [NSMutableArray new];
++      for (NSDictionary *menuItem in self.menuItems) {
++        NSString *label = [RCTConvert NSString:menuItem[@"label"]];
++        NSString *key = [RCTConvert NSString:menuItem[@"key"]];
++        NSString *selectorName = [NSString stringWithFormat:@"%@%@", CUSTOM_SELECTOR, key];
++        UICommand *command = [UICommand commandWithTitle:label
++                                                   image:nil
++                                                  action:NSSelectorFromString(selectorName)
++                                            propertyList:nil];
++        [commands addObject:command];
++      }
++      UIMenu *customMenu = [UIMenu menuWithTitle:@""
++                                           image:nil
++                                      identifier:@"com.reactnativecommunity.webview.custom"
++                                         options:UIMenuOptionsDisplayInline
++                                        children:commands];
++      [builder insertChildMenu:customMenu atStartOfMenuForIdentifier:UIMenuStandardEdit];
+     }
+-    [super buildMenuWithBuilder:builder];
++}
++- (NSMethodSignature *)methodSignatureForSelector:(SEL)sel
++{
++  NSMethodSignature *existingSelector = [super methodSignatureForSelector:sel];
++  if (existingSelector) {
++    return existingSelector;
++  }
++  return [super methodSignatureForSelector:@selector(forwardCustomMenuInvocation:)];
++}
++- (void)forwardCustomMenuInvocation:(NSInvocation *)invocation
++{
++  NSString *selectorName = NSStringFromSelector([invocation selector]);
++  NSRange match = [selectorName rangeOfString:CUSTOM_SELECTOR];
++  if (match.location != 0) {
++    return;
++  }
++  RNCWebViewImpl *container = (RNCWebViewImpl *)self.superview;
++  [container tappedMenuItem:[selectorName substringFromIndex:CUSTOM_SELECTOR.length]];
++}
++- (void)forwardInvocation:(NSInvocation *)invocation
++{
++  NSString *selectorName = NSStringFromSelector([invocation selector]);
++  if ([selectorName rangeOfString:CUSTOM_SELECTOR].location == 0) {
++    [self forwardCustomMenuInvocation:invocation];
++    return;
++  }
++  [super forwardInvocation:invocation];
+ }
+ #else // TARGET_OS_OSX
+ - (void)scrollWheel:(NSEvent *)theEvent {
+@@ -303,7 +352,9 @@
                                          propertyList:nil];
      [menuItems addObject:command];
    }
@@ -23,10 +93,21 @@ index 81e33cf..120303e 100644
    return menu;
  }
  #endif // !TARGET_OS_OSX
-@@ -381,5 +379,5 @@ - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
+@@ -381,7 +432,7 @@
    if (match.location == 0) {
      return YES;
    }
 -  return NO;
 +  return [self.webView canPerformAction:action withSender:sender];
  }
+ 
+ /**
+@@ -580,5 +631,8 @@
+ #if !TARGET_OS_OSX
+   // Allow this object to recognize gestures
+   if (self.menuItems != nil) {
++    if (@available(iOS 16.0, *)) {
++      return;
++    }
+     UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(startLongPress:)];
+     longPress.delegate = self;

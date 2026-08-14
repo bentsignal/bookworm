@@ -1,12 +1,5 @@
 import type { ViewStyle } from "react-native";
-import {
-  PanResponder,
-  Platform,
-  Pressable,
-  Text,
-  useColorScheme,
-  View,
-} from "react-native";
+import { PanResponder, Platform, Pressable, Text, View } from "react-native";
 import {
   KeyboardController,
   KeyboardStickyView,
@@ -16,6 +9,7 @@ import Animated, { LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 
+import { useAppColorScheme } from "~/features/theme/app-appearance";
 import { useColor } from "~/hooks/use-color";
 
 export function ChapterControlsPanel({
@@ -33,7 +27,7 @@ export function ChapterControlsPanel({
   const keyboardVisible = useKeyboardState((state) => state.isVisible);
   const card = useColor("card");
   const border = useColor("border");
-  const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
+  const colorScheme = useAppColorScheme();
   function changeExpanded(nextExpanded: boolean) {
     onExpandedChange(nextExpanded);
   }
@@ -108,6 +102,7 @@ function PanelSurface({
     <GlassView
       colorScheme={colorScheme}
       glassEffectStyle={{ animate: true, style: "regular" }}
+      isInteractive
       style={style}
     >
       {children}

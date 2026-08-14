@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { Appearance, useColorScheme } from "react-native";
 import { Storage } from "expo-sqlite/kv-store";
 import { Uniwind } from "uniwind";
 
@@ -26,10 +27,10 @@ export const appThemes = [
     previewForeground: "#ffffff",
     light: palette(
       "#f4f0e6",
-      "#17211d",
+      "#3f4943",
       "#fbf8f0",
       "#e9e3d6",
-      "#6e716b",
+      "#5b625d",
       "#d9d1c1",
       "#0d4a38",
       "#fffaf0",
@@ -38,10 +39,10 @@ export const appThemes = [
     ),
     dark: palette(
       "#0d1713",
-      "#f0eee7",
+      "#c8c6be",
       "#16231e",
       "#22322c",
-      "#a8aea9",
+      "#9da29e",
       "#34473f",
       "#71b49b",
       "#071510",
@@ -56,10 +57,10 @@ export const appThemes = [
     previewForeground: "#ffffff",
     light: palette(
       "#eef1f6",
-      "#172033",
+      "#414959",
       "#f8f9fc",
       "#dfe5ee",
-      "#687282",
+      "#59636f",
       "#ccd4e0",
       "#294b7a",
       "#f8fbff",
@@ -68,10 +69,10 @@ export const appThemes = [
     ),
     dark: palette(
       "#101724",
-      "#f0f2f6",
+      "#cbd0d8",
       "#182234",
       "#253147",
-      "#aab2c1",
+      "#9ba3b0",
       "#39465e",
       "#8eadde",
       "#09111f",
@@ -86,10 +87,10 @@ export const appThemes = [
     previewForeground: "#ffffff",
     light: palette(
       "#f5eee8",
-      "#2d1b17",
+      "#51423d",
       "#fcf7f2",
       "#eaded4",
-      "#796b65",
+      "#6b605b",
       "#ddcbbf",
       "#8a493b",
       "#fff8f3",
@@ -98,10 +99,10 @@ export const appThemes = [
     ),
     dark: palette(
       "#211411",
-      "#f4ece7",
+      "#d2c8c2",
       "#2d1c18",
       "#3a2722",
-      "#bca9a0",
+      "#aa9b94",
       "#513730",
       "#d69280",
       "#1c0d09",
@@ -116,10 +117,10 @@ export const appThemes = [
     previewForeground: "#ffffff",
     light: palette(
       "#f4eff3",
-      "#291c29",
+      "#4b404a",
       "#fbf7fa",
       "#e8dde7",
-      "#766a75",
+      "#685e67",
       "#d8c9d6",
       "#70456f",
       "#fff8ff",
@@ -128,10 +129,10 @@ export const appThemes = [
     ),
     dark: palette(
       "#1d141d",
-      "#f2ebf1",
+      "#d0c7ce",
       "#291d29",
       "#382738",
-      "#b7a7b5",
+      "#a596a3",
       "#4d394c",
       "#c391bf",
       "#160b16",
@@ -178,6 +179,12 @@ export function useAppTheme() {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
+export function useAppColorScheme() {
+  const theme = useAppTheme();
+  const systemScheme = useColorScheme() === "dark" ? "dark" : "light";
+  return resolveAppColorScheme(theme, systemScheme);
+}
+
 export function setAppTheme(theme: AppThemeKey) {
   if (theme === currentTheme) return;
   currentTheme = theme;
@@ -196,6 +203,7 @@ export function resolveAppColorScheme(
 function applyTheme(key: AppThemeKey) {
   const theme = appThemes.find((item) => item.key === key) ?? appThemes[0];
   if (!theme) return;
+  Appearance.setColorScheme(theme.mode ?? "unspecified");
   Uniwind.updateCSSVariables("light", theme.light);
   Uniwind.updateCSSVariables("dark", theme.dark);
 }
@@ -210,7 +218,7 @@ function getSnapshot() {
 }
 
 function parseTheme(value: string | null) {
-  return appThemes.find((theme) => theme.key === value)?.key ?? "forest";
+  return appThemes.find((theme) => theme.key === value)?.key ?? "paper";
 }
 
 // eslint-disable-next-line no-restricted-syntax -- Named palette calls remain less legible than the fixed semantic color order here.
@@ -243,10 +251,10 @@ function palette(
 function neutralLightPalette() {
   return palette(
     "#f5f5f3",
-    "#1c1c1e",
+    "#484846",
     "#fffefa",
     "#e9e9e6",
-    "#71716e",
+    "#666663",
     "#d7d7d2",
     "#333330",
     "#fafaf8",
@@ -258,10 +266,10 @@ function neutralLightPalette() {
 function neutralDarkPalette() {
   return palette(
     "#151515",
-    "#eeeeeb",
+    "#c9c9c4",
     "#1f1f1f",
     "#2a2a2a",
-    "#a4a4a0",
+    "#9b9b96",
     "#3b3b38",
     "#e2e2de",
     "#181818",
@@ -273,10 +281,10 @@ function neutralDarkPalette() {
 function paperPalette() {
   return palette(
     "#eee5d3",
-    "#302a22",
+    "#473f35",
     "#f6eedf",
     "#e1d5bf",
-    "#746b5f",
+    "#62594e",
     "#cec0a6",
     "#5f4932",
     "#fff8e9",

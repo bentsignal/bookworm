@@ -44,6 +44,7 @@ import { getSourceFile } from "../library-storage";
 import {
   applyReaderAnnotationsScript,
   parseReaderAnnotationEvent,
+  readerSelectionObserverScript,
   readerSelectionScript,
 } from "../reader-annotations";
 import {
@@ -55,10 +56,12 @@ import {
 /* eslint-disable max-lines */
 
 export function ReaderScreen({ id, scope }: { id: string; scope: BookScope }) {
-  const { books, imports } = useLibrary();
+  const { books, imports, isReady } = useLibrary();
+  const primary = useColor("primary");
   const book = (scope === "library" ? books : imports).find(
     (item) => item.id === id,
   );
+  if (!isReady) return <ReaderLoading color={primary} />;
   if (!book) {
     return (
       <View className="bg-background flex-1 items-center justify-center">
@@ -184,6 +187,7 @@ function EpubReader({
   const [noteDraft, setNoteDraft] = useState<ReaderSelectionMessage>();
   const [selectedAnnotation, setSelectedAnnotation] =
     useState<ReaderAnnotation>();
+  const [selectionHasHighlight, setSelectionHasHighlight] = useState(false);
   const [pendingSectionIndex, setPendingSectionIndex] = useState<number>();
   const section = sections[sectionIndex];
   const sectionProgress = useRef(new Map<string, number>());
@@ -357,6 +361,9 @@ function EpubReader({
                   loadedDocuments.current.add(key);
                   webViews.current
                     .get(key)
+                    ?.injectJavaScript(readerSelectionObserverScript());
+                  webViews.current
+                    .get(key)
                     ?.injectJavaScript(
                       applyReaderAnnotationsScript(
                         annotations.filter(
@@ -415,6 +422,10 @@ function EpubReader({
                     }
                     return;
                   }
+                  if (event.type === "selection-state") {
+                    setSelectionHasHighlight(event.hasHighlight);
+                    return;
+                  }
                   if (!event.selectedText.trim()) return;
                   if (event.action === "unhighlight") {
                     deleteReaderHighlightsInRange({
@@ -436,7 +447,14 @@ function EpubReader({
                     ? [
                         { key: "wormHighlight", label: "Highlight" },
                         { key: "wormNote", label: "Add Note" },
-                        { key: "wormUnhighlight", label: "Remove Highlight" },
+                        ...(selectionHasHighlight
+                          ? [
+                              {
+                                key: "wormUnhighlight",
+                                label: "Remove Highlight",
+                              },
+                            ]
+                          : []),
                       ]
                     : undefined
                 }
@@ -586,6 +604,7 @@ function EpubReader({
     isRestoring.current = true;
     setRestoreProgress(nextProgress);
     setSectionIndex(index);
+    setSelectionHasHighlight(false);
     setPendingSectionIndex(undefined);
     pendingNavigation.current = null;
     latestProgress.current = {
