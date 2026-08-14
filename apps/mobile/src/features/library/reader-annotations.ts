@@ -1,7 +1,7 @@
 import type { ReaderAnnotation } from "~/db/catalog";
 
 export interface ReaderSelectionMessage {
-  action: "highlight" | "note";
+  action: "highlight" | "note" | "unhighlight";
   endOffset: number;
   selectedText: string;
   startOffset: number;
@@ -16,7 +16,9 @@ export interface ReaderAnnotationMessage {
 export type ReaderAnnotationEvent =
   ReaderAnnotationMessage | ReaderSelectionMessage;
 
-export function readerSelectionScript(action: "highlight" | "note") {
+export function readerSelectionScript(
+  action: "highlight" | "note" | "unhighlight",
+) {
   return `(function () {
     var root = document.getElementById('worm-reader-content');
     var selection = window.getSelection();
@@ -132,7 +134,9 @@ export function parseReaderAnnotationEvent(value: string) {
     if (
       parsed.type === "selection" &&
       "action" in parsed &&
-      (parsed.action === "highlight" || parsed.action === "note") &&
+      (parsed.action === "highlight" ||
+        parsed.action === "note" ||
+        parsed.action === "unhighlight") &&
       "startOffset" in parsed &&
       typeof parsed.startOffset === "number" &&
       "endOffset" in parsed &&

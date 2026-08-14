@@ -25,9 +25,12 @@ import type {
 import {
   addReaderAnnotation,
   deleteReaderAnnotation,
+  deleteReaderHighlightsInRange,
   getReadingProgress,
   readerAnnotationsQuery,
+  removeDuplicateReaderAnnotations,
   saveReadingProgress,
+  updateReaderAnnotationNote,
 } from "~/db/catalog";
 import { useColor } from "~/hooks/use-color";
 import { getPdfPageCountAsync, WormPdfView } from "~/native/worm-pdf";
@@ -205,6 +208,11 @@ function EpubReader({
     [book.id],
   );
   const annotations = useLiveQuery(annotationQuery).data;
+
+  // eslint-disable-next-line no-restricted-syntax -- Existing installs may contain duplicate annotations created before range deduplication.
+  useEffect(() => {
+    if (scope === "library") removeDuplicateReaderAnnotations(book.id);
+  }, [book.id, scope]);
 
   const renderedIndices = useMemo(
     () =>
@@ -408,6 +416,15 @@ function EpubReader({
                     return;
                   }
                   if (!event.selectedText.trim()) return;
+                  if (event.action === "unhighlight") {
+                    deleteReaderHighlightsInRange({
+                      bookId: book.id,
+                      endOffset: event.endOffset,
+                      sectionId: renderedSection.id,
+                      startOffset: event.startOffset,
+                    });
+                    return;
+                  }
                   if (event.action === "note") {
                     setNoteDraft(event);
                     return;
@@ -419,12 +436,12 @@ function EpubReader({
                     ? [
                         { key: "wormHighlight", label: "Highlight" },
                         { key: "wormNote", label: "Add Note" },
+                        { key: "wormUnhighlight", label: "Remove Highlight" },
                       ]
                     : undefined
                 }
                 onCustomMenuSelection={({ nativeEvent }) => {
-                  const action =
-                    nativeEvent.key === "wormNote" ? "note" : "highlight";
+                  const action = customMenuAction(nativeEvent.key);
                   webViews.current
                     .get(key)
                     ?.injectJavaScript(readerSelectionScript(action));
@@ -541,6 +558,10 @@ function EpubReader({
           if (noteDraft) saveAnnotation(noteDraft, "note", note);
           setNoteDraft(undefined);
         }}
+        onUpdate={(id, note) => {
+          updateReaderAnnotationNote(id, note);
+          setSelectedAnnotation(undefined);
+        }}
       />
     </View>
   );
@@ -587,7 +608,7 @@ function EpubReader({
     note?: string,
   ) {
     if (!section) return;
-    addReaderAnnotation({
+    const id = addReaderAnnotation({
       bookId: book.id,
       endOffset: selection.endOffset,
       id: Crypto.randomUUID(),
@@ -597,6 +618,7 @@ function EpubReader({
       selectedText: selection.selectedText.trim(),
       startOffset: selection.startOffset,
     });
+    if (kind === "note" && note) updateReaderAnnotationNote(id, note);
   }
 }
 
@@ -622,6 +644,7 @@ function ReaderControls({
   scope: BookScope;
 }) {
   const router = useRouter();
+  const background = useColor("background");
   const foreground = useColor("foreground");
   return (
     <ChapterControlsPanel
@@ -631,10 +654,15 @@ function ReaderControls({
     >
       <ReaderBookDetails book={book} detail={detail} />
       <View className="flex-row gap-2">
-        <ReaderChapterButton foreground={foreground} onPress={onShowChapters} />
+        <ReaderChapterButton
+          background={foreground}
+          foreground={background}
+          onPress={onShowChapters}
+        />
         <ReaderAnnotationButton
+          background={foreground}
           count={annotationCount}
-          foreground={foreground}
+          foreground={background}
           onPress={onShowAnnotations}
         />
       </View>
@@ -643,7 +671,7 @@ function ReaderControls({
         className="bg-primary h-11 items-center justify-center rounded-full active:opacity-75"
         onPress={() =>
           router.push({
-            pathname: "/book/[id]",
+            pathname: "/book/[id]/edit",
             params: { id: book.id, scope },
           })
         }
@@ -657,9 +685,11 @@ function ReaderControls({
 }
 
 function ReaderChapterButton({
+  background,
   foreground,
   onPress,
 }: {
+  background: string;
   foreground: string;
   onPress: (() => void) | undefined;
 }) {
@@ -667,8 +697,9 @@ function ReaderChapterButton({
   return (
     <Pressable
       accessibilityRole="button"
-      className="bg-muted h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-75"
+      className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-75"
       onPress={onPress}
+      style={{ backgroundColor: background }}
     >
       <SymbolView
         name="list.bullet"
@@ -676,16 +707,20 @@ function ReaderChapterButton({
         tintColor={foreground}
         weight="semibold"
       />
-      <Text className="text-foreground text-sm font-semibold">Chapters</Text>
+      <Text className="text-sm font-semibold" style={{ color: foreground }}>
+        Chapters
+      </Text>
     </Pressable>
   );
 }
 
 function ReaderAnnotationButton({
+  background,
   count = 0,
   foreground,
   onPress,
 }: {
+  background: string;
   count?: number;
   foreground: string;
   onPress: (() => void) | undefined;
@@ -695,8 +730,9 @@ function ReaderAnnotationButton({
   return (
     <Pressable
       accessibilityRole="button"
-      className="bg-muted h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-75"
+      className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-75"
       onPress={onPress}
+      style={{ backgroundColor: background }}
     >
       <SymbolView
         name="highlighter"
@@ -704,7 +740,9 @@ function ReaderAnnotationButton({
         tintColor={foreground}
         weight="semibold"
       />
-      <Text className="text-foreground text-sm font-semibold">{label}</Text>
+      <Text className="text-sm font-semibold" style={{ color: foreground }}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -906,6 +944,12 @@ function readerDocumentKey(
   themeKey: string,
 ) {
   return `${scope}:${book.id}:${book.modifiedAt}:${sectionId ?? "none"}:${themeKey}`;
+}
+
+function customMenuAction(key: string) {
+  if (key === "wormNote") return "note" as const;
+  if (key === "wormUnhighlight") return "unhighlight" as const;
+  return "highlight" as const;
 }
 
 function ReaderLoading({ color }: { color: string }) {

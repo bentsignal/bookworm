@@ -154,7 +154,7 @@ function ImportDraftList({
             draft={item}
             onEdit={() =>
               router.push({
-                pathname: "/book/[id]",
+                pathname: "/book/[id]/edit",
                 params: { id: item.id, scope: "import" },
               })
             }

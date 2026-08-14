@@ -26,6 +26,17 @@ describe("reader annotations", () => {
       type: "selection",
     });
     expect(parseReaderAnnotationEvent('{"type":"selection"}')).toBeUndefined();
+    expect(
+      parseReaderAnnotationEvent(
+        JSON.stringify({
+          action: "unhighlight",
+          endOffset: 8,
+          selectedText: "passage",
+          startOffset: 1,
+          type: "selection",
+        }),
+      ),
+    ).toMatchObject({ action: "unhighlight", startOffset: 1, endOffset: 8 });
   });
 
   it("builds scripts that capture and repaint stable text offsets", () => {

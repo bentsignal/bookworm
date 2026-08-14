@@ -1,8 +1,18 @@
 diff --git a/apple/RNCWebViewImpl.m b/apple/RNCWebViewImpl.m
-index 81e33cf..c0950a6 100644
+index 81e33cf..120303e 100644
 --- a/apple/RNCWebViewImpl.m
 +++ b/apple/RNCWebViewImpl.m
-@@ -303,7 +303,9 @@ - (UIMenu *)editMenuInteraction:(UIEditMenuInteraction *)interaction menuForCon
+@@ -90,8 +90,4 @@ - (BOOL)canPerformAction:(SEL)action
+-  if (!self.menuItems) {
+-      return [super canPerformAction:action withSender:sender];
+-  }
+-
+-  return NO;
++  return [super canPerformAction:action withSender:sender];
+ }
+ - (void)buildMenuWithBuilder:(id<UIMenuBuilder>)builder API_AVAILABLE(ios(13.0))  {
+     if (@available(iOS 16.0, *)) {
+@@ -303,7 +299,9 @@ - (UIMenu *)editMenuInteraction:(UIEditMenuInteraction *)interaction menuForCon
                                          propertyList:nil];
      [menuItems addObject:command];
    }
@@ -13,3 +23,10 @@ index 81e33cf..c0950a6 100644
    return menu;
  }
  #endif // !TARGET_OS_OSX
+@@ -381,5 +379,5 @@ - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
+   if (match.location == 0) {
+     return YES;
+   }
+-  return NO;
++  return [self.webView canPerformAction:action withSender:sender];
+ }

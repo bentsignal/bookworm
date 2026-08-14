@@ -9,7 +9,11 @@ import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 
 import { DatabaseProvider } from "~/db/database-provider";
-import { initializeAppAppearance } from "~/features/theme/app-appearance";
+import {
+  initializeAppAppearance,
+  resolveAppColorScheme,
+  useAppTheme,
+} from "~/features/theme/app-appearance";
 import { createNavigationTheme } from "~/features/theme/navigation-theme";
 import { useColor } from "~/hooks/use-color";
 
@@ -25,7 +29,9 @@ export default function RootLayout() {
   const border = useColor("border");
   const foreground = useColor("foreground");
   const primary = useColor("primary");
-  const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
+  const appTheme = useAppTheme();
+  const systemScheme = useColorScheme() === "dark" ? "dark" : "light";
+  const colorScheme = resolveAppColorScheme(appTheme, systemScheme);
   const theme = createNavigationTheme(colorScheme, {
     background,
     border,
@@ -56,7 +62,10 @@ export default function RootLayout() {
               >
                 <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="book/[id]/index" />
+                <Stack.Screen
+                  name="book/[id]/edit"
+                  options={{ title: "Edit book" }}
+                />
                 <Stack.Screen name="book/[id]/read" />
                 <Stack.Screen name="book/[id]/section/[sectionId]" />
               </Stack>

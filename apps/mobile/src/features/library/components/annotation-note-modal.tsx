@@ -1,10 +1,11 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Modal, Pressable, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { ReaderSelectionMessage } from "../reader-annotations";
 import type { ReaderAnnotation } from "~/db/catalog";
+import { useColor } from "~/hooks/use-color";
 
 export function AnnotationNoteModal({
   annotation,
@@ -12,143 +13,147 @@ export function AnnotationNoteModal({
   onClose,
   onDelete,
   onSave,
+  onUpdate,
 }: {
   annotation?: ReaderAnnotation;
   draft?: ReaderSelectionMessage;
   onClose: () => void;
   onDelete: (id: string) => void;
   onSave: (note: string) => void;
+  onUpdate: (id: string, note: string) => void;
 }) {
   if (draft) {
     return (
-      <NoteComposer
-        draft={draft}
+      <NoteEditor
         key={`${draft.startOffset}:${draft.endOffset}`}
         onClose={onClose}
         onSave={onSave}
+        quote={draft.selectedText}
+        title="Add note"
       />
     );
   }
-  if (annotation) {
-    return (
-      <NoteViewer
-        annotation={annotation}
-        onClose={onClose}
-        onDelete={onDelete}
-      />
-    );
-  }
-  return null;
-}
-
-function NoteComposer({
-  draft,
-  onClose,
-  onSave,
-}: {
-  draft: ReaderSelectionMessage;
-  onClose: () => void;
-  onSave: (note: string) => void;
-}) {
-  const note = useRef("");
+  if (!annotation) return null;
   return (
-    <NoteSheet
-      action={
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            const value = note.current.trim();
-            if (value) onSave(value);
-          }}
-        >
-          <Text className="text-primary text-[16px] font-semibold">Save</Text>
-        </Pressable>
-      }
+    <NoteEditor
+      initialValue={annotation.note ?? ""}
+      key={`${annotation.id}:${annotation.updatedAt}`}
       onClose={onClose}
-      quote={draft.selectedText}
-      title="Add note"
-    >
-      <TextInput
-        autoFocus
-        className="border-border bg-card text-foreground mt-5 min-h-36 rounded-2xl border p-4 text-[16px]"
-        multiline
-        onChangeText={(value) => {
-          note.current = value;
-        }}
-        placeholder="Write a note…"
-        placeholderTextColor="#7d8580"
-        textAlignVertical="top"
-      />
-    </NoteSheet>
+      onDelete={() => onDelete(annotation.id)}
+      onSave={(note) => onUpdate(annotation.id, note)}
+      quote={annotation.selectedText}
+      title="Edit note"
+    />
   );
 }
 
-function NoteViewer({
-  annotation,
+function NoteEditor({
+  initialValue = "",
   onClose,
   onDelete,
-}: {
-  annotation: ReaderAnnotation;
-  onClose: () => void;
-  onDelete: (id: string) => void;
-}) {
-  return (
-    <NoteSheet onClose={onClose} quote={annotation.selectedText} title="Note">
-      <Text className="text-foreground mt-6 text-lg leading-7">
-        {annotation.note}
-      </Text>
-      <Pressable
-        accessibilityRole="button"
-        className="bg-muted mt-10 h-11 items-center justify-center rounded-full"
-        onPress={() => onDelete(annotation.id)}
-      >
-        <Text className="text-accent text-sm font-semibold">Delete note</Text>
-      </Pressable>
-    </NoteSheet>
-  );
-}
-
-function NoteSheet({
-  action,
-  children,
-  onClose,
+  onSave,
   quote,
   title,
 }: {
-  action?: React.ReactNode;
-  children: React.ReactNode;
+  initialValue?: string;
   onClose: () => void;
+  onDelete?: () => void;
+  onSave: (note: string) => void;
   quote: string;
   title: string;
 }) {
+  const note = useRef(initialValue);
+  const [canSave, setCanSave] = useState(false);
+  const background = useColor("background");
+  const card = useColor("card");
+  const foreground = useColor("foreground");
+  const mutedForeground = useColor("muted-foreground");
   return (
     <Modal
       animationType="slide"
       onRequestClose={onClose}
-      presentationStyle="pageSheet"
+      presentationStyle="formSheet"
       visible
     >
-      <SafeAreaView className="bg-background flex-1">
-        <View className="border-border flex-row items-center justify-between border-b px-5 py-3">
-          <Pressable accessibilityRole="button" onPress={onClose}>
-            <Text className="text-primary text-[16px]">Cancel</Text>
-          </Pressable>
-          <Text className="text-foreground text-[16px] font-semibold">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: background }}>
+        <View className="border-border h-16 flex-row items-center justify-between border-b px-5">
+          <SheetButton label="Cancel" onPress={onClose} />
+          <Text className="text-foreground text-[17px] font-semibold">
             {title}
           </Text>
-          <View className="min-w-12 items-end">{action}</View>
+          <SheetButton
+            disabled={!canSave}
+            label="Save"
+            onPress={() => {
+              if (canSave) onSave(note.current.trim());
+            }}
+          />
         </View>
         <KeyboardAwareScrollView
           bottomOffset={24}
-          contentContainerClassName="p-5"
+          contentContainerClassName="p-5 pb-10"
           keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
         >
           <Text className="text-muted-foreground text-sm leading-5">
             “{quote}”
           </Text>
-          {children}
+          <TextInput
+            autoFocus={!initialValue}
+            className="mt-5 min-h-40 rounded-2xl p-4 text-[16px]"
+            defaultValue={initialValue}
+            multiline
+            onChangeText={(value) => {
+              note.current = value;
+              setCanSave(
+                value.trim().length > 0 && value.trim() !== initialValue.trim(),
+              );
+            }}
+            placeholder="Write a note…"
+            placeholderTextColor={mutedForeground}
+            selectionColor={foreground}
+            style={{ backgroundColor: card, color: foreground }}
+            textAlignVertical="top"
+          />
+          <DeleteNoteButton onDelete={onDelete} />
         </KeyboardAwareScrollView>
       </SafeAreaView>
     </Modal>
+  );
+}
+
+function SheetButton({
+  disabled = false,
+  label,
+  onPress,
+}: {
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="h-11 min-w-14 items-center justify-center active:opacity-70"
+      disabled={disabled}
+      hitSlop={6}
+      onPress={onPress}
+      style={{ opacity: disabled ? 0.35 : 1 }}
+    >
+      <Text className="text-primary text-[16px] font-semibold">{label}</Text>
+    </Pressable>
+  );
+}
+
+function DeleteNoteButton({ onDelete }: { onDelete?: () => void }) {
+  if (!onDelete) return null;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="bg-muted mt-8 h-11 items-center justify-center rounded-full active:opacity-75"
+      onPress={onDelete}
+    >
+      <Text className="text-accent text-sm font-semibold">Delete note</Text>
+    </Pressable>
   );
 }

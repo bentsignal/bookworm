@@ -41,7 +41,7 @@ export function SettingsScreen() {
       <AppIconPicker />
       <StorageSettings />
       <Text className="text-muted-foreground mt-10 text-center text-xs">
-        bookworm 0.1.22
+        bookworm 0.1.23
       </Text>
     </ScrollView>
   );
@@ -102,17 +102,17 @@ function ThemeSwatch({
           borderWidth: selected ? 3 : 1,
         }}
       >
-        <ThemeCheck selected={selected} />
+        <ThemeCheck color={theme.previewForeground} selected={selected} />
       </View>
       <Text className="text-muted-foreground text-xs">{theme.label}</Text>
     </Pressable>
   );
 }
 
-function ThemeCheck({ selected }: { selected: boolean }) {
+function ThemeCheck({ color, selected }: { color: string; selected: boolean }) {
   if (!selected) return null;
   return (
-    <SymbolView name="checkmark" size={18} tintColor="#ffffff" weight="bold" />
+    <SymbolView name="checkmark" size={18} tintColor={color} weight="bold" />
   );
 }
 

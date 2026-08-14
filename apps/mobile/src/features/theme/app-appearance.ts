@@ -2,14 +2,17 @@ import { useSyncExternalStore } from "react";
 import { Storage } from "expo-sqlite/kv-store";
 import { Uniwind } from "uniwind";
 
-export type AppThemeKey = "clay" | "forest" | "ink" | "plum";
+export type AppThemeKey =
+  "clay" | "dark" | "forest" | "ink" | "light" | "paper" | "plum";
 
 interface AppThemeDefinition {
   dark: Record<`--${string}`, string>;
   key: AppThemeKey;
   label: string;
   light: Record<`--${string}`, string>;
+  mode?: "dark" | "light";
   preview: string;
+  previewForeground: string;
 }
 
 const preferenceKey = "worm:app-theme";
@@ -20,6 +23,7 @@ export const appThemes = [
     key: "forest",
     label: "Forest",
     preview: "#0d4a38",
+    previewForeground: "#ffffff",
     light: palette(
       "#f4f0e6",
       "#17211d",
@@ -49,6 +53,7 @@ export const appThemes = [
     key: "ink",
     label: "Ink",
     preview: "#294b7a",
+    previewForeground: "#ffffff",
     light: palette(
       "#eef1f6",
       "#172033",
@@ -78,6 +83,7 @@ export const appThemes = [
     key: "clay",
     label: "Clay",
     preview: "#8a493b",
+    previewForeground: "#ffffff",
     light: palette(
       "#f5eee8",
       "#2d1b17",
@@ -107,6 +113,7 @@ export const appThemes = [
     key: "plum",
     label: "Plum",
     preview: "#70456f",
+    previewForeground: "#ffffff",
     light: palette(
       "#f4eff3",
       "#291c29",
@@ -132,6 +139,33 @@ export const appThemes = [
       "#000000",
     ),
   },
+  {
+    key: "light",
+    label: "Light",
+    mode: "light",
+    preview: "#f5f5f3",
+    previewForeground: "#1c1c1e",
+    light: neutralLightPalette(),
+    dark: neutralLightPalette(),
+  },
+  {
+    key: "dark",
+    label: "Dark",
+    mode: "dark",
+    preview: "#171717",
+    previewForeground: "#f1f1ee",
+    light: neutralDarkPalette(),
+    dark: neutralDarkPalette(),
+  },
+  {
+    key: "paper",
+    label: "Paper",
+    mode: "light",
+    preview: "#e9dec6",
+    previewForeground: "#302a22",
+    light: paperPalette(),
+    dark: paperPalette(),
+  },
 ] satisfies AppThemeDefinition[];
 
 let currentTheme = parseTheme(Storage.getItemSync(preferenceKey));
@@ -150,6 +184,13 @@ export function setAppTheme(theme: AppThemeKey) {
   Storage.setItemSync(preferenceKey, theme);
   applyTheme(theme);
   for (const listener of listeners) listener();
+}
+
+export function resolveAppColorScheme(
+  theme: AppThemeKey,
+  systemScheme: "dark" | "light",
+) {
+  return appThemes.find((item) => item.key === theme)?.mode ?? systemScheme;
 }
 
 function applyTheme(key: AppThemeKey) {
@@ -197,4 +238,49 @@ function palette(
     "--primary-foreground": primaryForeground,
     "--shadow": shadow,
   };
+}
+
+function neutralLightPalette() {
+  return palette(
+    "#f5f5f3",
+    "#1c1c1e",
+    "#fffefa",
+    "#e9e9e6",
+    "#71716e",
+    "#d7d7d2",
+    "#333330",
+    "#fafaf8",
+    "#9a4b34",
+    "#000000",
+  );
+}
+
+function neutralDarkPalette() {
+  return palette(
+    "#151515",
+    "#eeeeeb",
+    "#1f1f1f",
+    "#2a2a2a",
+    "#a4a4a0",
+    "#3b3b38",
+    "#e2e2de",
+    "#181818",
+    "#d78668",
+    "#000000",
+  );
+}
+
+function paperPalette() {
+  return palette(
+    "#eee5d3",
+    "#302a22",
+    "#f6eedf",
+    "#e1d5bf",
+    "#746b5f",
+    "#cec0a6",
+    "#5f4932",
+    "#fff8e9",
+    "#a65239",
+    "#3e3328",
+  );
 }
