@@ -9,23 +9,23 @@ import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 
 import type { BookRecord } from "@worm/ebook-core";
 import {
-  analyzeBook,
   buildEpubEdition,
   buildEpubFromPdf,
   buildPdfEdition,
-  EPUB_STRUCTURE_VERSION,
 } from "@worm/ebook-core";
 
+import type { PendingBookImport } from "./import-book-files";
 import type { BookScope } from "~/db/catalog";
 import {
   hydrateBooks,
   importQueries,
-  insertBook,
   libraryQueries,
+  promoteStoredBooks,
   removeStoredBook,
   updateStoredBook,
 } from "~/db/catalog";
-import { extractPdfTextAsync, renderPdfPageAsync } from "~/native/worm-pdf";
+import { extractPdfTextAsync } from "~/native/worm-pdf";
+import { stagePickedBooks } from "./import-book-files";
 import {
   convertedEpubDestination,
   copyImportToLibrary,
@@ -34,14 +34,16 @@ import {
   editionDestination,
   getCoverFile,
   getSourceFile,
-  importBook,
-  refreshEpubMetadata,
 } from "./library-storage";
 
 const listeners = new Set<() => void>();
 const libraryQuerySet = libraryQueries();
 const importQuerySet = importQueries();
-let activityState = { isImporting: false };
+const noPendingImports = new Array<PendingBookImport>();
+let activityState = {
+  isAddingToLibrary: false,
+  pendingImports: noPendingImports,
+};
 
 export type BookImportDraft = BookRecord;
 
@@ -49,23 +51,21 @@ export function useLibrary() {
   const activity = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const libraryBookRows = useLiveQuery(libraryQuerySet.books).data;
   const librarySectionRows = useLiveQuery(libraryQuerySet.sections).data;
-  const libraryLocationRows = useLiveQuery(libraryQuerySet.locations).data;
   const importBookRows = useLiveQuery(importQuerySet.books).data;
   const importSectionRows = useLiveQuery(importQuerySet.sections).data;
-  const importLocationRows = useLiveQuery(importQuerySet.locations).data;
   const books = useMemo(
-    () =>
-      hydrateBooks(libraryBookRows, librarySectionRows, libraryLocationRows),
-    [libraryBookRows, libraryLocationRows, librarySectionRows],
+    () => hydrateBooks(libraryBookRows, librarySectionRows),
+    [libraryBookRows, librarySectionRows],
   );
   const imports = useMemo(
-    () => hydrateBooks(importBookRows, importSectionRows, importLocationRows),
-    [importBookRows, importLocationRows, importSectionRows],
+    () => hydrateBooks(importBookRows, importSectionRows),
+    [importBookRows, importSectionRows],
   );
   return {
     ...activity,
     books,
     imports,
+    isImporting: activity.pendingImports.length > 0,
     isReady: true,
     addBooksToLibrary: () => addBooksToLibrary(imports),
     convertPdfToEpub: (id: string) => convertPdfToEpub(id, books),
@@ -130,59 +130,62 @@ async function pickBookDrafts() {
     multipleFiles: true,
   });
   if (picked.canceled) return false;
-  setActivity({ isImporting: true });
-  const staged = new Array<BookRecord>();
-  let succeeded = false;
-  try {
-    for (const source of picked.result) {
-      const id = Crypto.randomUUID();
-      const analysis = await analyzeBook(await source.bytes(), source.name);
-      const stored = await importBook(source, id, analysis, "import");
-      staged.push(stored);
-      const prepared = await prepareBookAssets(stored, "import");
-      await insertBook(prepared, "import");
-      staged[staged.length - 1] = prepared;
-    }
-    succeeded = staged.length > 0;
-  } catch (error) {
-    for (const book of staged) {
-      await removeStoredBook(book.id, "import").catch(() => undefined);
-      deleteStoredBookFiles(book, "import");
-    }
-    Alert.alert("Couldn’t read those books", errorMessage(error));
-  }
-  setActivity({ isImporting: false });
-  return succeeded;
+  const pending = picked.result.map((source) => ({
+    fileName: source.name,
+    id: Crypto.randomUUID(),
+  }));
+  setActivity({
+    pendingImports: [...activityState.pendingImports, ...pending],
+  });
+  await nextPaint();
+  void processPickedBooks(picked.result, pending);
+  return pending.length > 0;
+}
+
+async function processPickedBooks(
+  sources: File[],
+  pending: PendingBookImport[],
+) {
+  const results = await stagePickedBooks(sources, pending, (id) =>
+    setActivity({
+      pendingImports: activityState.pendingImports.filter(
+        (pendingImport) => pendingImport.id !== id,
+      ),
+    }),
+  );
+  const failures = results.filter((result) => result !== undefined);
+  if (failures.length === 0) return;
+  Alert.alert(
+    failures.length === 1
+      ? `Couldn’t read ${failures[0]?.fileName ?? "that book"}`
+      : `Couldn’t read ${failures.length} books`,
+    failures.map(({ message }) => message).join("\n"),
+  );
 }
 
 async function addBooksToLibrary(imports: BookRecord[]) {
   if (imports.length === 0) return false;
-  setActivity({ isImporting: true });
-  const promoted = new Array<BookRecord>();
+  setActivity({ isAddingToLibrary: true });
+  const now = new Date().toISOString();
+  const promoted = imports.map((draft) => ({
+    ...draft,
+    importedAt: now,
+    modifiedAt: now,
+  }));
   let succeeded = false;
   try {
-    for (const draft of imports) {
-      const now = new Date().toISOString();
-      const book = { ...draft, importedAt: now, modifiedAt: now };
-      await copyImportToLibrary(book);
-      try {
-        await insertBook(book, "library");
-      } catch (error) {
-        deleteStoredBookFiles(book, "library");
-        throw error;
-      }
-      await removeStoredBook(draft.id, "import");
-      deleteStoredBookFiles(draft, "import");
-      promoted.push(book);
-    }
+    await Promise.all(promoted.map((book) => copyImportToLibrary(book)));
+    await promoteStoredBooks(promoted);
+    for (const draft of imports) deleteStoredBookFiles(draft, "import");
     void Haptics.notificationAsync(
       Haptics.NotificationFeedbackType.Success,
     ).catch(() => undefined);
     succeeded = true;
   } catch (error) {
+    for (const book of promoted) deleteStoredBookFiles(book, "library");
     Alert.alert("Couldn’t add those books", errorMessage(error));
   }
-  setActivity({ isImporting: false });
+  setActivity({ isAddingToLibrary: false });
   return succeeded;
 }
 
@@ -208,30 +211,6 @@ async function replaceBookCover(
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   } catch (error) {
     Alert.alert("Couldn’t change the cover", errorMessage(error));
-  }
-}
-
-async function prepareBookAssets(book: BookRecord, scope: BookScope) {
-  let prepared = book;
-  if (
-    book.format === "epub" &&
-    (book.epubStructureVersion !== EPUB_STRUCTURE_VERSION ||
-      !book.coverFileName)
-  ) {
-    prepared = await refreshEpubMetadata(book, scope);
-  }
-  if (prepared.format !== "pdf" || prepared.coverFileName) return prepared;
-  try {
-    const destination = coverDestination(prepared, "jpg", scope);
-    if (destination.exists) destination.delete();
-    await renderPdfPageAsync(
-      getSourceFile(prepared, scope).uri,
-      destination.uri,
-      1,
-    );
-    return { ...prepared, coverFileName: destination.name };
-  } catch {
-    return prepared;
   }
 }
 
@@ -313,6 +292,10 @@ function subscribe(listener: () => void) {
 
 function getSnapshot() {
   return activityState;
+}
+
+function nextPaint() {
+  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 function errorMessage(error: unknown) {

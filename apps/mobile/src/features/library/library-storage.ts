@@ -1,6 +1,10 @@
 import { Directory, File, Paths } from "expo-file-system";
 
-import type { BookAnalysis, BookRecord } from "@worm/ebook-core";
+import type {
+  BookAnalysis,
+  BookRecord,
+  ExtractedEpubCover,
+} from "@worm/ebook-core";
 import {
   analyzeBook,
   createEditionFileName,
@@ -13,13 +17,15 @@ import type { BookScope } from "~/db/catalog";
 const libraryDirectory = new Directory(Paths.document, "Library");
 const importDirectory = new Directory(Paths.document, "Imports");
 
-export async function importBook(
-  source: File,
-  id: string,
-  analyzed?: BookAnalysis,
-  scope: BookScope = "library",
-) {
-  const bytes = await source.bytes();
+export async function importBook({
+  analyzed,
+  extractedCover,
+  id,
+  scope = "library",
+  source,
+  sourceBytes,
+}: ImportBookInput) {
+  const bytes = sourceBytes ?? (await source.bytes());
   const analysis = analyzed ?? (await analyzeBook(bytes, source.name));
   const bookDirectory = bookDirectoryFor(id, scope);
   bookDirectory.create({ idempotent: true, intermediates: true });
@@ -28,7 +34,7 @@ export async function importBook(
     await source.copy(destination, { overwrite: false });
     const coverFileName =
       analysis.format === "epub"
-        ? await writeExtractedEpubCover(bookDirectory, bytes)
+        ? await writeExtractedEpubCover(bookDirectory, bytes, extractedCover)
         : undefined;
     const now = new Date().toISOString();
     return {
@@ -44,6 +50,15 @@ export async function importBook(
     if (bookDirectory.exists) bookDirectory.delete();
     throw error;
   }
+}
+
+interface ImportBookInput {
+  analyzed?: BookAnalysis;
+  extractedCover?: ExtractedEpubCover;
+  id: string;
+  scope?: BookScope;
+  source: File;
+  sourceBytes?: Uint8Array;
 }
 
 export function deleteBookFiles(book: BookRecord) {
@@ -158,8 +173,9 @@ function safeFileName(fileName: string) {
 async function writeExtractedEpubCover(
   bookDirectory: Directory,
   bytes: Uint8Array,
+  extractedCover?: ExtractedEpubCover,
 ) {
-  const cover = await extractEpubCover(bytes);
+  const cover = extractedCover ?? (await extractEpubCover(bytes));
   if (!cover) return undefined;
   const destination = new File(bookDirectory, `cover.${cover.extension}`);
   if (destination.exists) destination.delete();

@@ -5,10 +5,8 @@ import type { BookRecord, BookSection, EpubLocation } from "@worm/ebook-core";
 import { db } from "./database";
 import {
   importBooks,
-  importLocations,
   importSections,
   libraryBooks,
-  libraryLocations,
   librarySections,
   readingProgress,
 } from "./schema";
@@ -25,11 +23,6 @@ export async function insertBook(book: BookRecord, scope: BookScope) {
           .insert(librarySections)
           .values(sectionValues(book.id, book.sections));
       }
-      if (book.epubLocations?.length) {
-        await transaction
-          .insert(libraryLocations)
-          .values(locationValues(book.id, book.epubLocations));
-      }
       return;
     }
     await transaction.insert(importBooks).values(bookValues(book));
@@ -37,11 +30,6 @@ export async function insertBook(book: BookRecord, scope: BookScope) {
       await transaction
         .insert(importSections)
         .values(sectionValues(book.id, book.sections));
-    }
-    if (book.epubLocations?.length) {
-      await transaction
-        .insert(importLocations)
-        .values(locationValues(book.id, book.epubLocations));
     }
   });
 }
@@ -56,7 +44,6 @@ export async function updateStoredBook(
     ...update,
     modifiedAt: new Date().toISOString(),
   };
-  // eslint-disable-next-line complexity -- The two intentionally parallel table families keep import edits isolated from the library.
   await db.transaction(async (transaction) => {
     if (scope === "library") {
       await transaction
@@ -71,16 +58,6 @@ export async function updateStoredBook(
           await transaction
             .insert(librarySections)
             .values(sectionValues(book.id, next.sections));
-        }
-      }
-      if (update.epubLocations) {
-        await transaction
-          .delete(libraryLocations)
-          .where(eq(libraryLocations.bookId, book.id));
-        if (next.epubLocations?.length) {
-          await transaction
-            .insert(libraryLocations)
-            .values(locationValues(book.id, next.epubLocations));
         }
       }
       return;
@@ -99,16 +76,6 @@ export async function updateStoredBook(
           .values(sectionValues(book.id, next.sections));
       }
     }
-    if (update.epubLocations) {
-      await transaction
-        .delete(importLocations)
-        .where(eq(importLocations.bookId, book.id));
-      if (next.epubLocations?.length) {
-        await transaction
-          .insert(importLocations)
-          .values(locationValues(book.id, next.epubLocations));
-      }
-    }
   });
 }
 
@@ -119,9 +86,6 @@ export async function removeStoredBook(id: string, scope: BookScope) {
         .delete(librarySections)
         .where(eq(librarySections.bookId, id));
       await transaction
-        .delete(libraryLocations)
-        .where(eq(libraryLocations.bookId, id));
-      await transaction
         .delete(readingProgress)
         .where(eq(readingProgress.bookId, id));
       await transaction.delete(libraryBooks).where(eq(libraryBooks.id, id));
@@ -130,10 +94,24 @@ export async function removeStoredBook(id: string, scope: BookScope) {
     await transaction
       .delete(importSections)
       .where(eq(importSections.bookId, id));
-    await transaction
-      .delete(importLocations)
-      .where(eq(importLocations.bookId, id));
     await transaction.delete(importBooks).where(eq(importBooks.id, id));
+  });
+}
+
+export async function promoteStoredBooks(books: BookRecord[]) {
+  await db.transaction(async (transaction) => {
+    for (const book of books) {
+      await transaction.insert(libraryBooks).values(bookValues(book));
+      if (book.sections.length > 0) {
+        await transaction
+          .insert(librarySections)
+          .values(sectionValues(book.id, book.sections));
+      }
+      await transaction
+        .delete(importSections)
+        .where(eq(importSections.bookId, book.id));
+      await transaction.delete(importBooks).where(eq(importBooks.id, book.id));
+    }
   });
 }
 
@@ -180,10 +158,6 @@ export function libraryQueries() {
       .select()
       .from(libraryBooks)
       .orderBy(desc(libraryBooks.importedAt)),
-    locations: db
-      .select()
-      .from(libraryLocations)
-      .orderBy(asc(libraryLocations.bookId), asc(libraryLocations.position)),
     sections: db
       .select()
       .from(librarySections)
@@ -194,10 +168,6 @@ export function libraryQueries() {
 export function importQueries() {
   return {
     books: db.select().from(importBooks).orderBy(asc(importBooks.importedAt)),
-    locations: db
-      .select()
-      .from(importLocations)
-      .orderBy(asc(importLocations.bookId), asc(importLocations.position)),
     sections: db
       .select()
       .from(importSections)
@@ -208,15 +178,12 @@ export function importQueries() {
 export function hydrateBooks(
   bookRows: (typeof libraryBooks.$inferSelect)[],
   sectionRows: (typeof librarySections.$inferSelect)[],
-  locationRows: (typeof libraryLocations.$inferSelect)[],
 ) {
   return bookRows.map((row) => ({
     author: row.author ?? undefined,
     convertedEpubUri: row.convertedEpubUri ?? undefined,
     coverFileName: row.coverFileName ?? undefined,
-    epubLocations: toLocations(
-      locationRows.filter((item) => item.bookId === row.id),
-    ),
+    epubLocations: parseLocations(row.epubLocations),
     epubStructureVersion: row.epubStructureVersion ?? undefined,
     exportedUri: row.exportedUri ?? undefined,
     fileSize: row.fileSize ?? undefined,
@@ -237,6 +204,9 @@ function bookValues(book: BookRecord) {
     convertedEpubUri: book.convertedEpubUri,
     coverFileName: book.coverFileName,
     epubStructureVersion: book.epubStructureVersion,
+    epubLocations: book.epubLocations
+      ? JSON.stringify(book.epubLocations)
+      : undefined,
     exportedUri: book.exportedUri,
     fileSize: book.fileSize,
     format: book.format,
@@ -264,20 +234,6 @@ function sectionValues(bookId: string, sections: BookSection[]) {
   }));
 }
 
-function locationValues(bookId: string, locations: EpubLocation[]) {
-  return locations.map((location, position) => ({
-    bookId,
-    endOffset: location.endOffset,
-    excerpt: location.excerpt,
-    fragment: location.fragment,
-    href: location.href,
-    position,
-    sourceIndex: location.index,
-    startOffset: location.startOffset,
-    title: location.title,
-  }));
-}
-
 function toSections(rows: (typeof librarySections.$inferSelect)[]) {
   return rows.map((row) => ({
     endLocation: row.endLocation ?? undefined,
@@ -291,15 +247,29 @@ function toSections(rows: (typeof librarySections.$inferSelect)[]) {
   }));
 }
 
-function toLocations(rows: (typeof libraryLocations.$inferSelect)[]) {
-  if (rows.length === 0) return undefined;
-  return rows.map((row) => ({
-    endOffset: row.endOffset ?? undefined,
-    excerpt: row.excerpt,
-    fragment: row.fragment ?? undefined,
-    href: row.href,
-    index: row.sourceIndex,
-    startOffset: row.startOffset ?? undefined,
-    title: row.title,
-  }));
+function parseLocations(value: string | null) {
+  if (!value) return undefined;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSON.parse has an any return type; every retained item is validated below.
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) && parsed.every(isEpubLocation)
+      ? parsed
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isEpubLocation(value: unknown): value is EpubLocation {
+  if (!value || typeof value !== "object") return false;
+  return (
+    "href" in value &&
+    typeof value.href === "string" &&
+    "index" in value &&
+    typeof value.index === "number" &&
+    "title" in value &&
+    typeof value.title === "string" &&
+    "excerpt" in value &&
+    typeof value.excerpt === "string"
+  );
 }

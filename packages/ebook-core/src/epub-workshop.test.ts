@@ -5,6 +5,7 @@ import { analyzeBook } from "./analyze";
 import { extractEpubCover } from "./epub-cover";
 import { buildEpubEdition } from "./epub-export";
 import { buildEpubBoundaryHtml } from "./epub-reader";
+import { prepareBookImport } from "./prepare-import";
 
 describe("EPUB workshop", () => {
   it("discovers editable locations inside large spine documents", async () => {
@@ -35,6 +36,23 @@ describe("EPUB workshop", () => {
 
     expect(cover?.extension).toBe("jpg");
     expect(cover?.bytes).toEqual(new Uint8Array([4, 5, 6]));
+  });
+
+  it("prepares EPUB metadata and its cover from one import session", async () => {
+    const prepared = await prepareBookImport(
+      await createEpub(true),
+      "kindred.epub",
+    );
+
+    expect(prepared.analysis).toMatchObject({
+      author: "Octavia E. Butler",
+      format: "epub",
+      title: "Kindred",
+    });
+    expect(prepared.cover).toEqual({
+      bytes: new Uint8Array([4, 5, 6]),
+      extension: "jpg",
+    });
   });
 
   it("renders all text blocks as one reusable boundary document", async () => {

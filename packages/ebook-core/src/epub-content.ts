@@ -21,8 +21,16 @@ export async function discoverEpubLocations(
   navigation: EpubNavigationPoint[] = [],
 ) {
   const locations = new Array<EpubLocation>();
-  for (const href of spineHrefs) {
-    const source = await archive.file(href)?.async("string");
+  const documents = await Promise.all(
+    spineHrefs.map(async (href) => ({
+      href,
+      source: await archive.file(href)?.async("string"),
+    })),
+  );
+  for (const [documentIndex, { href, source }] of documents.entries()) {
+    if (documentIndex > 0 && documentIndex % 8 === 0) {
+      await yieldToEventLoop();
+    }
     if (!source) continue;
     const points = navigation.filter((point) => sameDocument(point.href, href));
     const segments = splitDocument(source, points);
@@ -41,6 +49,10 @@ export async function discoverEpubLocations(
     });
   }
   return locations;
+}
+
+function yieldToEventLoop() {
+  return new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
 export async function renderEpubSection(

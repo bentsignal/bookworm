@@ -12,6 +12,7 @@ function bookColumns() {
     convertedEpubUri: text("converted_epub_uri"),
     coverFileName: text("cover_file_name"),
     epubStructureVersion: integer("epub_structure_version"),
+    epubLocations: text("epub_locations"),
     exportedUri: text("exported_uri"),
     fileSize: integer("file_size"),
     format: text({ enum: ["epub", "pdf"] }).notNull(),
@@ -51,31 +52,6 @@ export const importSections = sqliteTable(
   "import_sections",
   sectionColumns(),
   (table) => [primaryKey({ columns: [table.bookId, table.id] })],
-);
-
-function locationColumns() {
-  return {
-    bookId: text("book_id").notNull(),
-    endOffset: integer("end_offset"),
-    excerpt: text().notNull(),
-    fragment: text(),
-    href: text().notNull(),
-    position: integer().notNull(),
-    sourceIndex: integer("source_index").notNull(),
-    startOffset: integer("start_offset"),
-    title: text().notNull(),
-  };
-}
-
-export const libraryLocations = sqliteTable(
-  "library_locations",
-  locationColumns(),
-  (table) => [primaryKey({ columns: [table.bookId, table.position] })],
-);
-export const importLocations = sqliteTable(
-  "import_locations",
-  locationColumns(),
-  (table) => [primaryKey({ columns: [table.bookId, table.position] })],
 );
 
 export const readingProgress = sqliteTable("reading_progress", {

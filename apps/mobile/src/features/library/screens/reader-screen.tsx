@@ -16,7 +16,11 @@ import { getPdfPageCountAsync, WormPdfView } from "~/native/worm-pdf";
 import { ChapterControlsPanel } from "../components/chapter-controls-panel";
 import { useLibrary } from "../library-context";
 import { getSourceFile } from "../library-storage";
-import { resolveEpubPosition } from "../reader-progress";
+import {
+  EPUB_RESTORE_COMPLETE_MESSAGE,
+  epubScrollRestoreScript,
+  resolveEpubPosition,
+} from "../reader-progress";
 
 /* eslint-disable max-lines */
 
@@ -144,6 +148,8 @@ function EpubReader({
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const section = sections[sectionIndex];
   const sectionProgress = useRef(new Map<string, number>());
+  const webView = useRef<WebView>(null);
+  const isRestoring = useRef(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -220,21 +226,36 @@ function EpubReader({
   return (
     <View className="flex-1">
       <WebView
+        ref={webView}
         allowFileAccess={false}
         allowsLinkPreview={false}
         bounces
         containerStyle={{ backgroundColor: background }}
         decelerationRate="normal"
-        injectedJavaScript={restoreScrollScript(restoreProgress)}
         javaScriptEnabled
+        key={document.key}
+        onLoadEnd={() => {
+          webView.current?.injectJavaScript(
+            epubScrollRestoreScript(restoreProgress),
+          );
+        }}
+        onLoadStart={() => {
+          isRestoring.current = true;
+        }}
+        onMessage={({ nativeEvent }) => {
+          if (nativeEvent.data === EPUB_RESTORE_COMPLETE_MESSAGE) {
+            isRestoring.current = false;
+          }
+        }}
         onScroll={({ nativeEvent }) => {
           const maximum =
             nativeEvent.contentSize.height -
             nativeEvent.layoutMeasurement.height;
-          const next =
-            maximum <= 0
-              ? 1
-              : Math.max(0, Math.min(1, nativeEvent.contentOffset.y / maximum));
+          if (maximum <= 0 || isRestoring.current) return;
+          const next = Math.max(
+            0,
+            Math.min(1, nativeEvent.contentOffset.y / maximum),
+          );
           sectionProgress.current.set(section.id, next);
           latestProgress.current = {
             scrollProgress: next,
@@ -256,7 +277,6 @@ function EpubReader({
           url.startsWith("about:blank")
         }
         originWhitelist={["about:blank"]}
-        scrollEventThrottle={100}
         setSupportMultipleWindows={false}
         source={{ html: document.html }}
         style={{ backgroundColor: background }}
@@ -275,6 +295,7 @@ function EpubReader({
                 ? (sectionProgress.current.get(nextSection.id) ?? 0)
                 : 0;
               setProgress(Math.round(nextProgress * 100));
+              isRestoring.current = true;
               setRestoreProgress(nextProgress);
               if (nextSection) {
                 const nextKey = readerDocumentKey(
@@ -524,18 +545,6 @@ function readerDocumentKey(
   themeKey: string,
 ) {
   return `${scope}:${book.id}:${book.modifiedAt}:${sectionId ?? "none"}:${themeKey}`;
-}
-
-function restoreScrollScript(progress: number) {
-  return `(function () {
-    function restore() {
-    var maximum = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    window.scrollTo(0, maximum * ${Math.max(0, Math.min(1, progress))});
-    }
-    restore();
-    requestAnimationFrame(restore);
-    setTimeout(restore, 50);
-  })(); true;`;
 }
 
 function ReaderLoading({ color }: { color: string }) {

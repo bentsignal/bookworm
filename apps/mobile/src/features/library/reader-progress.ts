@@ -24,6 +24,36 @@ export function resolveEpubPosition(
   };
 }
 
+export function epubScrollRestoreScript(progress: number) {
+  const bounded = clamp(progress, 0, 1);
+  return `(function () {
+    var attempts = 0;
+    function restore() {
+      var height = Math.max(
+        document.body ? document.body.scrollHeight : 0,
+        document.documentElement ? document.documentElement.scrollHeight : 0
+      );
+      var maximum = Math.max(0, height - window.innerHeight);
+      window.scrollTo(0, maximum * ${bounded});
+      attempts += 1;
+      if (attempts < 16) {
+        setTimeout(restore, 50);
+      } else {
+        window.ReactNativeWebView.postMessage('${EPUB_RESTORE_COMPLETE_MESSAGE}');
+      }
+    }
+    requestAnimationFrame(restore);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(restore);
+    }
+    Array.prototype.forEach.call(document.images || [], function (image) {
+      if (!image.complete) image.addEventListener('load', restore, { once: true });
+    });
+  })(); true;`;
+}
+
+export const EPUB_RESTORE_COMPLETE_MESSAGE = "bookworm:restore-complete";
+
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.max(minimum, Math.min(maximum, value));
 }

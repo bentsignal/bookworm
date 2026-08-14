@@ -9,6 +9,10 @@ const xmlParser = new XMLParser({
 
 export async function extractEpubCover(source: Uint8Array) {
   const archive = await JSZip.loadAsync(source);
+  return extractEpubCoverFromArchive(archive);
+}
+
+export async function extractEpubCoverFromArchive(archive: JSZip) {
   const rootFile = await getRootFile(archive);
   const packageXml = await archive.file(rootFile)?.async("string");
   if (!packageXml) return undefined;
@@ -25,6 +29,10 @@ export async function extractEpubCover(source: Uint8Array) {
     extension: extensionForMediaType(item["@_media-type"], path),
   };
 }
+
+export type ExtractedEpubCover = NonNullable<
+  Awaited<ReturnType<typeof extractEpubCoverFromArchive>>
+>;
 
 function findCoverItem(parsed: ParsedPackage, manifest: ManifestItem[]) {
   const coverId = toArray(parsed.package?.metadata?.meta).find(

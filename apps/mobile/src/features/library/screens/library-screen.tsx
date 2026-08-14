@@ -92,7 +92,7 @@ function EmptyLibrary() {
         Your shelf is empty
       </Text>
       <Text className="text-muted-foreground mt-2 text-center text-[15px] leading-6">
-        Use the Import tab to bring in books from Files.
+        Use the Import tab to bring in books.
       </Text>
     </View>
   );

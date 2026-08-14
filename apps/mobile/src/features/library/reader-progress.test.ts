@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import type { BookSection } from "@worm/ebook-core";
 
-import { resolveEpubPosition } from "./reader-progress";
+import {
+  EPUB_RESTORE_COMPLETE_MESSAGE,
+  epubScrollRestoreScript,
+  resolveEpubPosition,
+} from "./reader-progress";
 
 const sections = [
   { id: "first", included: true, title: "First" },
@@ -29,5 +33,20 @@ describe("resolveEpubPosition", () => {
         sectionIndex: 99,
       }),
     ).toEqual({ scrollProgress: 1, sectionIndex: 2 });
+  });
+});
+
+describe("epubScrollRestoreScript", () => {
+  it("retries layout-aware restoration before enabling progress writes", () => {
+    const script = epubScrollRestoreScript(0.64);
+
+    expect(script).toContain("maximum * 0.64");
+    expect(script).toContain("attempts < 16");
+    expect(script).toContain(EPUB_RESTORE_COMPLETE_MESSAGE);
+  });
+
+  it("bounds invalid persisted progress", () => {
+    expect(epubScrollRestoreScript(4)).toContain("maximum * 1");
+    expect(epubScrollRestoreScript(-2)).toContain("maximum * 0");
   });
 });

@@ -1,27 +1,37 @@
 // eslint-disable-next-line no-restricted-imports -- A stable focus callback prevents the file picker reopening during input rerenders.
 import { useCallback, useRef } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 
 import type { BookRecord } from "@worm/ebook-core";
 
+import type { PendingBookImport } from "../import-book-files";
 import { useColor } from "~/hooks/use-color";
 import { AddBookDraftEditor } from "../components/add-book-draft-editor";
+import {
+  ImportListHeader,
+  PendingImports,
+} from "../components/import-list-controls";
 import { useLibrary } from "../library-context";
 
 export function AddBooksScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const {
     addBooksToLibrary,
     deleteImport,
     imports,
+    isAddingToLibrary,
     isImporting,
+    pendingImports,
     pickBookDrafts,
-    updateImport,
   } = useLibrary();
   const isPicking = useRef(false);
   const offeredPicker = useRef(false);
@@ -59,6 +69,7 @@ export function AddBooksScreen() {
   const canAdd =
     imports.length > 0 &&
     imports.every(({ title }) => title.trim().length > 0) &&
+    !isAddingToLibrary &&
     !isImporting;
 
   if (imports.length === 0) {
@@ -67,7 +78,7 @@ export function AddBooksScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <EmptyImportState
           activityColor={activityColor}
-          isImporting={isImporting}
+          pendingImports={pendingImports}
           onChoose={() => void chooseBooks()}
         />
       </View>
@@ -75,156 +86,109 @@ export function AddBooksScreen() {
   }
 
   return (
-    <View className="bg-background flex-1">
-      <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAwareScrollView
-        bottomOffset={28}
-        contentContainerClassName="grow px-5"
-        contentContainerStyle={{
-          paddingBottom: Math.max(insets.bottom + 108, 128),
-          paddingTop: insets.top + 12,
-        }}
-        keyboardDismissMode="interactive"
-        keyboardShouldPersistTaps="handled"
-      >
-        <DraftContent
-          activityForeground={activityForeground}
-          canAdd={canAdd}
-          drafts={imports}
-          isImporting={isImporting}
-          onAdd={() => void addToLibrary()}
-          onChooseMore={() => void chooseBooks()}
-          onChange={(id, update) => updateImport(id, update)}
-          onRemove={deleteImport}
-          onEdit={(id) =>
-            router.push({
-              pathname: "/book/[id]",
-              params: { id, scope: "import" },
-            })
-          }
-          onPreview={(id) =>
-            router.push({
-              pathname: "/book/[id]/read",
-              params: { id, scope: "import" },
-            })
-          }
-        />
-      </KeyboardAwareScrollView>
-    </View>
+    <ImportDraftList
+      activityColor={activityColor}
+      activityForeground={activityForeground}
+      canAdd={canAdd}
+      drafts={imports}
+      isAddingToLibrary={isAddingToLibrary}
+      onAdd={() => void addToLibrary()}
+      onChooseMore={() => void chooseBooks()}
+      onRemove={deleteImport}
+      pendingImports={pendingImports}
+    />
   );
 }
 
-function DraftContent({
+function ImportDraftList({
+  activityColor,
   activityForeground,
   canAdd,
   drafts,
-  isImporting,
+  isAddingToLibrary,
   onAdd,
   onChooseMore,
-  onChange,
-  onEdit,
-  onPreview,
   onRemove,
+  pendingImports,
 }: {
+  activityColor: string;
   activityForeground: string;
   canAdd: boolean;
   drafts: BookRecord[];
-  isImporting: boolean;
+  isAddingToLibrary: boolean;
   onAdd: () => void;
   onChooseMore: () => void;
-  onChange: (id: string, update: Partial<BookRecord>) => void;
-  onEdit: (id: string) => void;
-  onPreview: (id: string) => void;
   onRemove: (id: string) => void;
+  pendingImports: PendingBookImport[];
 }) {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   return (
-    <View>
-      <DraftsHeader count={drafts.length} onChooseMore={onChooseMore} />
-      <View className="gap-4">
-        {drafts.map((draft) => (
-          <AddBookDraftEditor
-            draft={draft}
-            key={draft.id}
-            onChange={(update) => onChange(draft.id, update)}
-            onEdit={() => onEdit(draft.id)}
-            onPreview={() => onPreview(draft.id)}
-            onRemove={() => onRemove(draft.id)}
-          />
-        ))}
-      </View>
-      <AddToLibraryButton
-        activityColor={activityForeground}
+    <View className="bg-background flex-1">
+      <Stack.Screen options={{ headerShown: false }} />
+      <ImportListHeader
         canAdd={canAdd}
         count={drafts.length}
-        isImporting={isImporting}
+        isAddingToLibrary={isAddingToLibrary}
         onAdd={onAdd}
+        onChooseMore={onChooseMore}
+        pendingCount={pendingImports.length}
+        spinnerColor={activityForeground}
+        style={{ paddingTop: insets.top + 10 }}
+      />
+      <FlatList
+        contentContainerClassName="gap-3 px-5 pt-3"
+        contentContainerStyle={{
+          paddingBottom: Math.max(insets.bottom + 108, 128),
+        }}
+        data={drafts}
+        keyExtractor={({ id }) => id}
+        ListHeaderComponent={
+          <PendingImports
+            color={activityColor}
+            pendingImports={pendingImports}
+          />
+        }
+        renderItem={({ item }) => (
+          <AddBookDraftEditor
+            draft={item}
+            onEdit={() =>
+              router.push({
+                pathname: "/book/[id]",
+                params: { id: item.id, scope: "import" },
+              })
+            }
+            onPreview={() =>
+              router.push({
+                pathname: "/book/[id]/read",
+                params: { id: item.id, scope: "import" },
+              })
+            }
+            onRemove={() => onRemove(item.id)}
+          />
+        )}
+        showsVerticalScrollIndicator={false}
       />
     </View>
-  );
-}
-
-function AddToLibraryButton({
-  activityColor,
-  canAdd,
-  count,
-  isImporting,
-  onAdd,
-}: {
-  activityColor: string;
-  canAdd: boolean;
-  count: number;
-  isImporting: boolean;
-  onAdd: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      className="bg-primary mt-6 h-12 items-center justify-center rounded-full active:opacity-75 disabled:opacity-50"
-      disabled={!canAdd}
-      onPress={onAdd}
-    >
-      <AddButtonContent
-        activityColor={activityColor}
-        count={count}
-        isImporting={isImporting}
-      />
-    </Pressable>
-  );
-}
-
-function AddButtonContent({
-  activityColor,
-  count,
-  isImporting,
-}: {
-  activityColor: string;
-  count: number;
-  isImporting: boolean;
-}) {
-  if (isImporting) return <ActivityIndicator color={activityColor} />;
-  return (
-    <Text className="text-primary-foreground text-[15px] font-semibold">
-      {addButtonLabel(count)}
-    </Text>
   );
 }
 
 function EmptyImportState({
   activityColor,
-  isImporting,
+  pendingImports,
   onChoose,
 }: {
   activityColor: string;
-  isImporting: boolean;
+  pendingImports: PendingBookImport[];
   onChoose: () => void;
 }) {
   const primary = useColor("primary");
-  if (isImporting) {
+  if (pendingImports.length > 0) {
     return (
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator color={activityColor} />
         <Text className="text-muted-foreground mt-3 text-sm">
-          Reading books…
+          Reading {pendingLabel(pendingImports.length)}…
         </Text>
       </View>
     );
@@ -253,29 +217,6 @@ function EmptyImportState({
   );
 }
 
-function DraftsHeader({
-  count,
-  onChooseMore,
-}: {
-  count: number;
-  onChooseMore: () => void;
-}) {
-  return (
-    <View className="mb-5 flex-row items-center justify-between">
-      <Text className="text-foreground font-serif text-2xl">
-        {draftCountLabel(count)}
-      </Text>
-      <Pressable
-        accessibilityRole="button"
-        className="border-border bg-card h-10 items-center justify-center rounded-full border px-4 active:opacity-70"
-        onPress={onChooseMore}
-      >
-        <Text className="text-primary text-sm font-semibold">Import more</Text>
-      </Pressable>
-    </View>
-  );
-}
-
 async function pickDrafts(
   pickBookDrafts: () => Promise<boolean>,
   isPicking: React.MutableRefObject<boolean>,
@@ -286,10 +227,6 @@ async function pickDrafts(
   isPicking.current = false;
 }
 
-function addButtonLabel(count: number) {
-  return count === 1 ? "Add to library" : `Add ${count} books to library`;
-}
-
-function draftCountLabel(count: number) {
+function pendingLabel(count: number) {
   return `${count} ${count === 1 ? "book" : "books"}`;
 }

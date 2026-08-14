@@ -1,4 +1,5 @@
 export { analyzeBook } from "./analyze";
+export { prepareBookImport } from "./prepare-import";
 export { buildEpubEdition } from "./epub-export";
 export {
   buildEpubBoundaryHtml,
@@ -8,7 +9,8 @@ export {
   createEpubReaderSession,
 } from "./epub-reader";
 export type { EpubReaderSession } from "./epub-reader";
-export { extractEpubCover } from "./epub-cover";
+export { extractEpubCover, extractEpubCoverFromArchive } from "./epub-cover";
+export type { ExtractedEpubCover } from "./epub-cover";
 export { sectionLocationRange } from "./epub-content";
 export {
   cleanEpubLocations,

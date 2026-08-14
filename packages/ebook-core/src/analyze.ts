@@ -5,6 +5,7 @@ import { PDFDocument } from "pdf-lib";
 import type { EpubNavigationPoint } from "./epub-content";
 import type { BookAnalysis } from "./model";
 import { discoverEpubLocations } from "./epub-content";
+import { textFromMarkup } from "./epub-text";
 import {
   EPUB_STRUCTURE_VERSION,
   getBookFormat,
@@ -21,7 +22,8 @@ export async function analyzeBook(bytes: Uint8Array, fileName: string) {
   const format = getBookFormat(fileName);
   if (!format) throw new Error("bookworm supports EPUB and PDF files.");
   if (format === "pdf") return analyzePdf(bytes, fileName);
-  return analyzeEpub(bytes, fileName);
+  const archive = await JSZip.loadAsync(bytes);
+  return analyzeEpubArchive(archive, fileName);
 }
 
 async function analyzePdf(bytes: Uint8Array, fileName: string) {
@@ -44,8 +46,7 @@ async function analyzePdf(bytes: Uint8Array, fileName: string) {
   } satisfies BookAnalysis;
 }
 
-async function analyzeEpub(bytes: Uint8Array, fileName: string) {
-  const archive = await JSZip.loadAsync(bytes);
+export async function analyzeEpubArchive(archive: JSZip, fileName: string) {
   const rootFile = await getRootFile(archive);
   const packageXml = await archive.file(rootFile)?.async("string");
   if (!packageXml) throw new Error("This EPUB has no readable package file.");
@@ -235,33 +236,7 @@ function sameDocument(first: string, second: string) {
 }
 
 function stripMarkup(value: string) {
-  return decodeXmlEntities(
-    value
-      .replaceAll(/<[^>]+>/gu, " ")
-      .replaceAll(/\s+/gu, " ")
-      .trim(),
-  );
-}
-
-function decodeXmlEntities(value: string) {
-  const named = new Map([
-    ["&amp;", "&"],
-    ["&apos;", "'"],
-    ["&gt;", ">"],
-    ["&lt;", "<"],
-    ["&quot;", '"'],
-  ]);
-  return value
-    .replaceAll(
-      /&(amp|apos|gt|lt|quot);/gu,
-      (entity) => named.get(entity) ?? entity,
-    )
-    .replaceAll(/&#(\d+);/gu, (_entity, codePoint: string) => {
-      return String.fromCodePoint(Number.parseInt(codePoint, 10));
-    })
-    .replaceAll(/&#x([\da-f]+);/giu, (_entity, codePoint: string) => {
-      return String.fromCodePoint(Number.parseInt(codePoint, 16));
-    });
+  return textFromMarkup(value);
 }
 
 function fallbackEpubSection() {
