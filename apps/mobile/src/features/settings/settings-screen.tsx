@@ -18,10 +18,10 @@ import {
   useAppTheme,
 } from "~/features/theme/app-appearance";
 import { useColor } from "~/hooks/use-color";
-import iconForest from "../../assets/icon.png";
-import iconClay from "../../assets/icons/icon-clay.png";
-import iconNavy from "../../assets/icons/icon-navy.png";
-import iconPlum from "../../assets/icons/icon-plum.png";
+import iconForest from "../../../assets/icon.png";
+import iconClay from "../../../assets/icons/icon-clay.png";
+import iconNavy from "../../../assets/icons/icon-navy.png";
+import iconPlum from "../../../assets/icons/icon-plum.png";
 
 const appIcons = [
   { image: iconForest, label: "Forest", nativeName: "IconForest" },
