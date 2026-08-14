@@ -41,7 +41,8 @@ describe("epubScrollRestoreScript", () => {
     const script = epubScrollRestoreScript(0.64);
 
     expect(script).toContain("maximum * 0.64");
-    expect(script).toContain("attempts < 16");
+    expect(script).toContain("attempts >= 16");
+    expect(script).toContain("stableAttempts >= 2");
     expect(script).toContain(EPUB_RESTORE_COMPLETE_MESSAGE);
   });
 

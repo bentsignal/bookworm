@@ -8,11 +8,17 @@ import {
   importSections,
   libraryBooks,
   librarySections,
+  readerAnnotations,
   readingProgress,
 } from "./schema";
 
 export type BookScope = "import" | "library";
 export type ReadingProgress = typeof readingProgress.$inferSelect;
+export type ReaderAnnotation = typeof readerAnnotations.$inferSelect;
+export type NewReaderAnnotation = Omit<
+  typeof readerAnnotations.$inferInsert,
+  "createdAt" | "updatedAt"
+>;
 
 export async function insertBook(book: BookRecord, scope: BookScope) {
   await db.transaction(async (transaction) => {
@@ -88,6 +94,9 @@ export async function removeStoredBook(id: string, scope: BookScope) {
       await transaction
         .delete(readingProgress)
         .where(eq(readingProgress.bookId, id));
+      await transaction
+        .delete(readerAnnotations)
+        .where(eq(readerAnnotations.bookId, id));
       await transaction.delete(libraryBooks).where(eq(libraryBooks.id, id));
       return;
     }
@@ -96,6 +105,25 @@ export async function removeStoredBook(id: string, scope: BookScope) {
       .where(eq(importSections.bookId, id));
     await transaction.delete(importBooks).where(eq(importBooks.id, id));
   });
+}
+
+export function readerAnnotationsQuery(bookId: string) {
+  return db
+    .select()
+    .from(readerAnnotations)
+    .where(eq(readerAnnotations.bookId, bookId))
+    .orderBy(asc(readerAnnotations.createdAt));
+}
+
+export function addReaderAnnotation(annotation: NewReaderAnnotation) {
+  const timestamp = new Date().toISOString();
+  db.insert(readerAnnotations)
+    .values({ ...annotation, createdAt: timestamp, updatedAt: timestamp })
+    .run();
+}
+
+export function deleteReaderAnnotation(id: string) {
+  db.delete(readerAnnotations).where(eq(readerAnnotations.id, id)).run();
 }
 
 export async function promoteStoredBooks(books: BookRecord[]) {

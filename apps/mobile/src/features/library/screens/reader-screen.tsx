@@ -1,23 +1,48 @@
 // eslint-disable-next-line no-restricted-imports -- Included chapters must remain referentially stable while progress rows update reactively.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { WebView } from "react-native-webview";
+import * as Crypto from "expo-crypto";
 import { File } from "expo-file-system";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 
 import type { BookRecord, EpubReaderSession } from "@worm/ebook-core";
 import { createEpubReaderSession } from "@worm/ebook-core";
 
-import type { BookScope, ReadingProgress } from "~/db/catalog";
-import { getReadingProgress, saveReadingProgress } from "~/db/catalog";
+import type { ReaderSelectionMessage } from "../reader-annotations";
+import type {
+  BookScope,
+  ReaderAnnotation,
+  ReadingProgress,
+} from "~/db/catalog";
+import {
+  addReaderAnnotation,
+  deleteReaderAnnotation,
+  getReadingProgress,
+  readerAnnotationsQuery,
+  saveReadingProgress,
+} from "~/db/catalog";
 import { useColor } from "~/hooks/use-color";
 import { getPdfPageCountAsync, WormPdfView } from "~/native/worm-pdf";
+import { AnnotationBrowserModal } from "../components/annotation-browser-modal";
+import { AnnotationNoteModal } from "../components/annotation-note-modal";
 import { ChapterBrowserModal } from "../components/chapter-browser-modal";
 import { ChapterControlsPanel } from "../components/chapter-controls-panel";
 import { chapterWindowIndices } from "../epub-navigation";
 import { useLibrary } from "../library-context";
 import { getSourceFile } from "../library-storage";
+import {
+  applyReaderAnnotationsScript,
+  parseReaderAnnotationEvent,
+  readerSelectionScript,
+} from "../reader-annotations";
 import {
   EPUB_RESTORE_COMPLETE_MESSAGE,
   epubScrollRestoreScript,
@@ -147,14 +172,22 @@ function EpubReader({
   const [restoreProgress, setRestoreProgress] = useState(
     initialPosition.scrollProgress,
   );
+  const [initialRestoreComplete, setInitialRestoreComplete] = useState(
+    initialPosition.scrollProgress === 0,
+  );
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [chaptersVisible, setChaptersVisible] = useState(false);
+  const [annotationsVisible, setAnnotationsVisible] = useState(false);
+  const [noteDraft, setNoteDraft] = useState<ReaderSelectionMessage>();
+  const [selectedAnnotation, setSelectedAnnotation] =
+    useState<ReaderAnnotation>();
   const [pendingSectionIndex, setPendingSectionIndex] = useState<number>();
   const section = sections[sectionIndex];
   const sectionProgress = useRef(new Map<string, number>());
   const webViews = useRef(new Map<string, WebView>());
   const loadedDocuments = useRef(new Set<string>());
   const pendingNavigation = useRef<{ index: number; key: string } | null>(null);
+  const pendingAnnotationId = useRef<string | undefined>(undefined);
   const isRestoring = useRef(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
@@ -166,6 +199,12 @@ function EpubReader({
   });
   const themeKey = `${background}:${foreground}:${muted}`;
   const documentKey = readerDocumentKey(book, scope, section?.id, themeKey);
+  const [initialDocumentKey] = useState(documentKey);
+  const annotationQuery = useMemo(
+    () => readerAnnotationsQuery(book.id),
+    [book.id],
+  );
+  const annotations = useLiveQuery(annotationQuery).data;
 
   const renderedIndices = useMemo(
     () =>
@@ -230,6 +269,25 @@ function EpubReader({
     return () => cancelAnimationFrame(frame);
   }, [documentKey, restoreProgress]);
 
+  // eslint-disable-next-line no-restricted-syntax -- Persisted annotations are painted into every prepared chapter without rebuilding its EPUB document.
+  useEffect(() => {
+    for (const index of renderedIndices) {
+      const renderedSection = sections[index];
+      if (!renderedSection) continue;
+      const key = readerDocumentKey(book, scope, renderedSection.id, themeKey);
+      if (!loadedDocuments.current.has(key)) continue;
+      webViews.current
+        .get(key)
+        ?.injectJavaScript(
+          applyReaderAnnotationsScript(
+            annotations.filter(
+              (annotation) => annotation.sectionId === renderedSection.id,
+            ),
+          ),
+        );
+    }
+  }, [annotations, book, renderedIndices, scope, sections, themeKey]);
+
   // eslint-disable-next-line no-restricted-syntax -- Unmount cleanup flushes the last external reader position to SQLite.
   useEffect(
     () => () => {
@@ -251,6 +309,7 @@ function EpubReader({
   return (
     <View className="flex-1">
       <View className="flex-1">
+        {/* eslint-disable-next-line max-lines-per-function -- Each prepared WebView owns its native lifecycle callbacks. */}
         {renderedIndices.map((index) => {
           const renderedSection = sections[index];
           if (!renderedSection) return null;
@@ -264,15 +323,16 @@ function EpubReader({
           if (!html) return null;
           const active = index === sectionIndex;
           return (
-            <View
+            <ReaderDocumentLayer
               accessibilityElementsHidden={!active}
+              active={active}
+              animateReveal={key === initialDocumentKey}
               importantForAccessibility={
                 active ? "auto" : "no-hide-descendants"
               }
               key={key}
               pointerEvents={active ? "auto" : "none"}
-              className="absolute inset-0"
-              style={{ opacity: active ? 1 : 0 }}
+              revealed={key !== initialDocumentKey || initialRestoreComplete}
             >
               <WebView
                 ref={(instance) => {
@@ -287,6 +347,16 @@ function EpubReader({
                 javaScriptEnabled
                 onLoadEnd={() => {
                   loadedDocuments.current.add(key);
+                  webViews.current
+                    .get(key)
+                    ?.injectJavaScript(
+                      applyReaderAnnotationsScript(
+                        annotations.filter(
+                          (annotation) =>
+                            annotation.sectionId === renderedSection.id,
+                        ),
+                      ),
+                    );
                   const saved = active
                     ? restoreProgress
                     : (sectionProgress.current.get(renderedSection.id) ?? 0);
@@ -301,13 +371,63 @@ function EpubReader({
                 onLoadStart={() => {
                   if (active) isRestoring.current = true;
                 }}
+                // eslint-disable-next-line complexity -- One native message channel coordinates restore, selection, and annotation events.
                 onMessage={({ nativeEvent }) => {
                   if (
                     active &&
                     nativeEvent.data === EPUB_RESTORE_COMPLETE_MESSAGE
                   ) {
                     isRestoring.current = false;
+                    if (key === initialDocumentKey) {
+                      setInitialRestoreComplete(true);
+                    }
+                    const annotationId = pendingAnnotationId.current;
+                    if (annotationId) {
+                      pendingAnnotationId.current = undefined;
+                      webViews.current.get(key)?.injectJavaScript(
+                        applyReaderAnnotationsScript(
+                          annotations.filter(
+                            (annotation) =>
+                              annotation.sectionId === renderedSection.id,
+                          ),
+                          annotationId,
+                        ),
+                      );
+                    }
+                    return;
                   }
+                  const event = parseReaderAnnotationEvent(nativeEvent.data);
+                  if (!active || !event || scope !== "library") return;
+                  if (event.type === "annotation-press") {
+                    const annotation = annotations.find(
+                      (item) => item.id === event.id,
+                    );
+                    if (annotation?.kind === "note") {
+                      setSelectedAnnotation(annotation);
+                    }
+                    return;
+                  }
+                  if (!event.selectedText.trim()) return;
+                  if (event.action === "note") {
+                    setNoteDraft(event);
+                    return;
+                  }
+                  saveAnnotation(event, "highlight");
+                }}
+                menuItems={
+                  active && scope === "library"
+                    ? [
+                        { key: "wormHighlight", label: "Highlight" },
+                        { key: "wormNote", label: "Add Note" },
+                      ]
+                    : undefined
+                }
+                onCustomMenuSelection={({ nativeEvent }) => {
+                  const action =
+                    nativeEvent.key === "wormNote" ? "note" : "highlight";
+                  webViews.current
+                    .get(key)
+                    ?.injectJavaScript(readerSelectionScript(action));
                 }}
                 onScroll={({ nativeEvent }) => {
                   if (!active) return;
@@ -346,7 +466,7 @@ function EpubReader({
                 style={{ backgroundColor: background }}
                 textInteractionEnabled={active}
               />
-            </View>
+            </ReaderDocumentLayer>
           );
         })}
       </View>
@@ -365,6 +485,8 @@ function EpubReader({
         }
         onExpandedChange={setControlsExpanded}
         onShowChapters={() => setChaptersVisible(true)}
+        annotationCount={annotations.length}
+        onShowAnnotations={() => setAnnotationsVisible(true)}
         scope={scope}
       />
       <ChapterBrowserModal
@@ -377,6 +499,48 @@ function EpubReader({
         }}
         sections={sections}
         visible={chaptersVisible}
+      />
+      <AnnotationBrowserModal
+        annotations={annotations}
+        onClose={() => setAnnotationsVisible(false)}
+        onSelect={(annotation) => {
+          setAnnotationsVisible(false);
+          setControlsExpanded(false);
+          pendingAnnotationId.current = annotation.id;
+          const index = sections.findIndex(
+            (item) => item.id === annotation.sectionId,
+          );
+          if (index === sectionIndex) {
+            pendingAnnotationId.current = undefined;
+            webViews.current.get(documentKey)?.injectJavaScript(
+              applyReaderAnnotationsScript(
+                annotations.filter(
+                  (item) => item.sectionId === annotation.sectionId,
+                ),
+                annotation.id,
+              ),
+            );
+          } else {
+            prepareSectionChange(index);
+          }
+        }}
+        visible={annotationsVisible}
+      />
+      <AnnotationNoteModal
+        annotation={selectedAnnotation}
+        draft={noteDraft}
+        onClose={() => {
+          setNoteDraft(undefined);
+          setSelectedAnnotation(undefined);
+        }}
+        onDelete={(id) => {
+          deleteReaderAnnotation(id);
+          setSelectedAnnotation(undefined);
+        }}
+        onSave={(note) => {
+          if (noteDraft) saveAnnotation(noteDraft, "note", note);
+          setNoteDraft(undefined);
+        }}
       />
     </View>
   );
@@ -416,6 +580,24 @@ function EpubReader({
       });
     }
   }
+
+  function saveAnnotation(
+    selection: ReaderSelectionMessage,
+    kind: "highlight" | "note",
+    note?: string,
+  ) {
+    if (!section) return;
+    addReaderAnnotation({
+      bookId: book.id,
+      endOffset: selection.endOffset,
+      id: Crypto.randomUUID(),
+      kind,
+      note,
+      sectionId: section.id,
+      selectedText: selection.selectedText.trim(),
+      startOffset: selection.startOffset,
+    });
+  }
 }
 
 function ReaderControls({
@@ -424,6 +606,8 @@ function ReaderControls({
   expanded,
   header,
   onExpandedChange,
+  annotationCount,
+  onShowAnnotations,
   onShowChapters,
   scope,
 }: {
@@ -432,6 +616,8 @@ function ReaderControls({
   expanded: boolean;
   header?: React.ReactNode;
   onExpandedChange: (expanded: boolean) => void;
+  annotationCount?: number;
+  onShowAnnotations?: () => void;
   onShowChapters?: () => void;
   scope: BookScope;
 }) {
@@ -444,7 +630,14 @@ function ReaderControls({
       onExpandedChange={onExpandedChange}
     >
       <ReaderBookDetails book={book} detail={detail} />
-      <ReaderChapterButton foreground={foreground} onPress={onShowChapters} />
+      <View className="flex-row gap-2">
+        <ReaderChapterButton foreground={foreground} onPress={onShowChapters} />
+        <ReaderAnnotationButton
+          count={annotationCount}
+          foreground={foreground}
+          onPress={onShowAnnotations}
+        />
+      </View>
       <Pressable
         accessibilityRole="button"
         className="bg-primary h-11 items-center justify-center rounded-full active:opacity-75"
@@ -474,7 +667,7 @@ function ReaderChapterButton({
   return (
     <Pressable
       accessibilityRole="button"
-      className="border-border h-11 flex-row items-center justify-center gap-2 rounded-full border active:opacity-75"
+      className="bg-muted h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-75"
       onPress={onPress}
     >
       <SymbolView
@@ -485,6 +678,66 @@ function ReaderChapterButton({
       />
       <Text className="text-foreground text-sm font-semibold">Chapters</Text>
     </Pressable>
+  );
+}
+
+function ReaderAnnotationButton({
+  count = 0,
+  foreground,
+  onPress,
+}: {
+  count?: number;
+  foreground: string;
+  onPress: (() => void) | undefined;
+}) {
+  if (!onPress) return null;
+  const label = count > 0 ? `Saved ${count}` : "Saved";
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="bg-muted h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-75"
+      onPress={onPress}
+    >
+      <SymbolView
+        name="highlighter"
+        size={15}
+        tintColor={foreground}
+        weight="semibold"
+      />
+      <Text className="text-foreground text-sm font-semibold">{label}</Text>
+    </Pressable>
+  );
+}
+
+function ReaderDocumentLayer({
+  active,
+  animateReveal,
+  children,
+  revealed,
+  ...viewProps
+}: React.ComponentProps<typeof Animated.View> & {
+  active: boolean;
+  animateReveal: boolean;
+  revealed: boolean;
+}) {
+  const opacity = useSharedValue(active && revealed ? 1 : 0);
+
+  // eslint-disable-next-line no-restricted-syntax -- The saved reader position must be hidden until the WebView has restored it.
+  useEffect(() => {
+    opacity.value = withTiming(active && revealed ? 1 : 0, {
+      duration: active && animateReveal && revealed ? 160 : 0,
+    });
+  }, [active, animateReveal, opacity, revealed]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.View
+      {...viewProps}
+      className="absolute inset-0"
+      style={animatedStyle}
+    >
+      {children}
+    </Animated.View>
   );
 }
 

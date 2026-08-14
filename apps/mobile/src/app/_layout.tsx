@@ -9,10 +9,13 @@ import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 
 import { DatabaseProvider } from "~/db/database-provider";
+import { initializeAppAppearance } from "~/features/theme/app-appearance";
 import { createNavigationTheme } from "~/features/theme/navigation-theme";
 import { useColor } from "~/hooks/use-color";
 
 import "../styles.css";
+
+initializeAppAppearance();
 
 void SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 220, fade: true });

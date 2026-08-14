@@ -9,6 +9,7 @@
   "packageManager": "pnpm@9.15.4",
   "pnpm": {
     "patchedDependencies": {
+      "react-native-webview@13.16.1": "patches/react-native-webview@13.16.1.patch",
       "react-native-screens@4.26.2": "patches/react-native-screens@4.26.2.patch"
     }
   },

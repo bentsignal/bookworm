@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { Stack, useRouter } from "expo-router";
+import { Redirect, Stack, useRouter } from "expo-router";
 
 import type { BookRecord, BookSection } from "@worm/ebook-core";
 
@@ -20,11 +20,7 @@ export function BookScreen({ id, scope }: { id: string; scope: BookScope }) {
     (item) => item.id === id,
   );
   if (!book) {
-    return (
-      <View className="bg-background flex-1 items-center justify-center">
-        <Text className="text-muted-foreground">Book not found.</Text>
-      </View>
-    );
+    return <Redirect href="/(tabs)/(library)" />;
   }
   return <BookEditor book={book} scope={scope} />;
 }
@@ -85,7 +81,7 @@ function BookEditor({ book, scope }: { book: BookRecord; scope: BookScope }) {
         }}
         onDelete={() =>
           confirmDelete(book, deleteBook, () => {
-            void router.back();
+            router.replace("/(tabs)/(library)");
           })
         }
         onExport={() => void exportBook(book.id)}
@@ -333,8 +329,8 @@ function confirmDelete(
         text: "Remove",
         style: "destructive",
         onPress: () => {
-          deleteBook(book.id);
           navigateBack();
+          deleteBook(book.id);
         },
       },
     ],

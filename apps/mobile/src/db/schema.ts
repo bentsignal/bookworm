@@ -1,4 +1,5 @@
 import {
+  index,
   integer,
   primaryKey,
   real,
@@ -62,3 +63,20 @@ export const readingProgress = sqliteTable("reading_progress", {
   sectionIndex: integer("section_index").notNull().default(0),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const readerAnnotations = sqliteTable(
+  "reader_annotations",
+  {
+    bookId: text("book_id").notNull(),
+    createdAt: text("created_at").notNull(),
+    endOffset: integer("end_offset").notNull(),
+    id: text().primaryKey(),
+    kind: text({ enum: ["highlight", "note"] }).notNull(),
+    note: text(),
+    sectionId: text("section_id").notNull(),
+    selectedText: text("selected_text").notNull(),
+    startOffset: integer("start_offset").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("reader_annotations_book_id_idx").on(table.bookId)],
+);

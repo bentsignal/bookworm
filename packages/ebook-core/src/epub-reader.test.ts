@@ -28,6 +28,7 @@ describe("createEpubReaderSession", () => {
     );
 
     expect(first).toContain("First chapter");
+    expect(first).toContain('id="worm-reader-content"');
     expect(second).toContain("Second chapter");
   });
 });

@@ -101,7 +101,7 @@ function readerDocument(markup: string, theme: ReaderTheme) {
 }
 
 function chapterMarkup(title: string, markup: string) {
-  return `<article><h1 class="worm-chapter-title">${escapeHtml(title)}</h1>${markup}</article>`;
+  return `<article><h1 class="worm-chapter-title">${escapeHtml(title)}</h1><div id="worm-reader-content">${markup}</div></article>`;
 }
 
 function fallbackLocations(sections: BookSection[]) {
@@ -142,6 +142,9 @@ p { margin: 0 0 1.1em; }
 img, svg { height: auto; max-width: 100%; }
 a { color: inherit; text-decoration-color: ${theme.muted}; }
 table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
+mark[data-worm-annotation] { border-radius: 0.16em; color: inherit; padding: 0.05em 0; }
+mark[data-worm-kind="highlight"] { background: rgba(246, 195, 68, 0.5); }
+mark[data-worm-kind="note"] { background: color-mix(in srgb, ${theme.muted} 72%, #d7a6f5); }
 .bookworm-boundary { border-left: 3px solid transparent; margin: 0 -0.75rem; padding: 0.5rem 0.75rem; }
 .bookworm-boundary.selected { background: color-mix(in srgb, ${theme.muted} 24%, transparent); border-left-color: ${theme.foreground}; border-radius: 0.35rem; }
 `;

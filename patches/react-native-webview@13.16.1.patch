@@ -1,0 +1,15 @@
+diff --git a/apple/RNCWebViewImpl.m b/apple/RNCWebViewImpl.m
+index 81e33cf..c0950a6 100644
+--- a/apple/RNCWebViewImpl.m
++++ b/apple/RNCWebViewImpl.m
+@@ -303,7 +303,9 @@ - (UIMenu *)editMenuInteraction:(UIEditMenuInteraction *)interaction menuForCon
+                                         propertyList:nil];
+     [menuItems addObject:command];
+   }
+-  UIMenu *menu = [UIMenu menuWithChildren:menuItems];
++  NSMutableArray<UIMenuElement *> *combinedItems = [menuItems mutableCopy];
++  [combinedItems addObjectsFromArray:suggestedActions];
++  UIMenu *menu = [UIMenu menuWithChildren:combinedItems];
+   return menu;
+ }
+ #endif // !TARGET_OS_OSX

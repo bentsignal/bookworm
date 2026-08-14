@@ -28,18 +28,31 @@ export function epubScrollRestoreScript(progress: number) {
   const bounded = clamp(progress, 0, 1);
   return `(function () {
     var attempts = 0;
+    var complete = false;
+    var lastMaximum = -1;
+    var stableAttempts = 0;
+    function finish() {
+      if (complete) return;
+      complete = true;
+      window.ReactNativeWebView.postMessage('${EPUB_RESTORE_COMPLETE_MESSAGE}');
+    }
     function restore() {
+      if (complete) return;
       var height = Math.max(
         document.body ? document.body.scrollHeight : 0,
         document.documentElement ? document.documentElement.scrollHeight : 0
       );
       var maximum = Math.max(0, height - window.innerHeight);
       window.scrollTo(0, maximum * ${bounded});
+      stableAttempts = Math.abs(maximum - lastMaximum) < 1
+        ? stableAttempts + 1
+        : 0;
+      lastMaximum = maximum;
       attempts += 1;
-      if (attempts < 16) {
-        setTimeout(restore, 50);
+      if (stableAttempts >= 2 || attempts >= 16) {
+        finish();
       } else {
-        window.ReactNativeWebView.postMessage('${EPUB_RESTORE_COMPLETE_MESSAGE}');
+        setTimeout(restore, 50);
       }
     }
     requestAnimationFrame(restore);
