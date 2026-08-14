@@ -1,11 +1,6 @@
 import journal from "./migrations/meta/_journal.json";
 
-const initialMigration = `CREATE TABLE \`app_metadata\` (
-  \`key\` text PRIMARY KEY NOT NULL,
-  \`value\` text NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE \`import_books\` (
+const initialMigration = `CREATE TABLE \`import_books\` (
   \`author\` text,
   \`converted_epub_uri\` text,
   \`cover_file_name\` text,

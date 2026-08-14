@@ -86,8 +86,3 @@ export const readingProgress = sqliteTable("reading_progress", {
   sectionIndex: integer("section_index").notNull().default(0),
   updatedAt: text("updated_at").notNull(),
 });
-
-export const appMetadata = sqliteTable("app_metadata", {
-  key: text().primaryKey(),
-  value: text().notNull(),
-});

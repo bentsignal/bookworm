@@ -61,6 +61,19 @@ export function AddBooksScreen() {
     imports.every(({ title }) => title.trim().length > 0) &&
     !isImporting;
 
+  if (imports.length === 0) {
+    return (
+      <View className="bg-background flex-1">
+        <Stack.Screen options={{ headerShown: false }} />
+        <EmptyImportState
+          activityColor={activityColor}
+          isImporting={isImporting}
+          onChoose={() => void chooseBooks()}
+        />
+      </View>
+    );
+  }
+
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ headerShown: false }} />
@@ -75,13 +88,11 @@ export function AddBooksScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <DraftContent
-          activityColor={activityColor}
           activityForeground={activityForeground}
           canAdd={canAdd}
           drafts={imports}
           isImporting={isImporting}
           onAdd={() => void addToLibrary()}
-          onChoose={() => void chooseBooks()}
           onChooseMore={() => void chooseBooks()}
           onChange={(id, update) => updateImport(id, update)}
           onRemove={deleteImport}
@@ -104,43 +115,28 @@ export function AddBooksScreen() {
 }
 
 function DraftContent({
-  activityColor,
   activityForeground,
   canAdd,
   drafts,
   isImporting,
   onAdd,
-  onChoose,
   onChooseMore,
   onChange,
   onEdit,
   onPreview,
   onRemove,
 }: {
-  activityColor: string;
   activityForeground: string;
   canAdd: boolean;
   drafts: BookRecord[];
   isImporting: boolean;
   onAdd: () => void;
-  onChoose: () => void;
   onChooseMore: () => void;
   onChange: (id: string, update: Partial<BookRecord>) => void;
   onEdit: (id: string) => void;
   onPreview: (id: string) => void;
   onRemove: (id: string) => void;
 }) {
-  if (isImporting && drafts.length === 0) {
-    return (
-      <View className="flex-1 items-center justify-center pb-24">
-        <ActivityIndicator color={activityColor} />
-        <Text className="text-muted-foreground mt-3 text-sm">
-          Reading books…
-        </Text>
-      </View>
-    );
-  }
-  if (drafts.length === 0) return <EmptyDrafts onChoose={onChoose} />;
   return (
     <View>
       <DraftsHeader count={drafts.length} onChooseMore={onChooseMore} />
@@ -213,11 +209,29 @@ function AddButtonContent({
   );
 }
 
-function EmptyDrafts({ onChoose }: { onChoose: () => void }) {
+function EmptyImportState({
+  activityColor,
+  isImporting,
+  onChoose,
+}: {
+  activityColor: string;
+  isImporting: boolean;
+  onChoose: () => void;
+}) {
   const primary = useColor("primary");
+  if (isImporting) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator color={activityColor} />
+        <Text className="text-muted-foreground mt-3 text-sm">
+          Reading books…
+        </Text>
+      </View>
+    );
+  }
   return (
-    <View className="flex-1 items-center justify-center pb-2">
-      <View className="mb-4 items-center justify-center">
+    <View className="flex-1 items-center justify-center">
+      <View className="mb-3 items-center justify-center">
         <SymbolView
           fallback={<Text className="text-primary text-4xl">+</Text>}
           name="books.vertical.fill"

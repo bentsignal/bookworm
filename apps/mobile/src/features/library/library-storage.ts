@@ -3,30 +3,15 @@ import { Directory, File, Paths } from "expo-file-system";
 import type { BookAnalysis, BookRecord } from "@worm/ebook-core";
 import {
   analyzeBook,
-  cleanEpubLocations,
   createEditionFileName,
   EPUB_STRUCTURE_VERSION,
   extractEpubCover,
-  remapEpubSections,
 } from "@worm/ebook-core";
 
 import type { BookScope } from "~/db/catalog";
 
 const libraryDirectory = new Directory(Paths.document, "Library");
 const importDirectory = new Directory(Paths.document, "Imports");
-const catalogFile = new File(libraryDirectory, "library.json");
-
-export async function loadLibrary() {
-  ensureLibraryDirectory();
-  if (!catalogFile.exists) return [];
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- JSON.parse is validated by the type guard before use.
-    const stored = JSON.parse(await catalogFile.text());
-    return isBookRecordArray(stored) ? stored : [];
-  } catch {
-    return [];
-  }
-}
 
 export async function importBook(
   source: File,
@@ -59,12 +44,6 @@ export async function importBook(
     if (bookDirectory.exists) bookDirectory.delete();
     throw error;
   }
-}
-
-export function saveLibrary(books: BookRecord[]) {
-  ensureLibraryDirectory();
-  if (!catalogFile.exists) catalogFile.create();
-  catalogFile.write(JSON.stringify(books, null, 2));
 }
 
 export function deleteBookFiles(book: BookRecord) {
@@ -138,8 +117,6 @@ export async function refreshEpubMetadata(
 ) {
   if (book.format !== "epub") return book;
   const refreshStructure = book.epubStructureVersion !== EPUB_STRUCTURE_VERSION;
-  const migrated = migrateCachedEpubMetadata(book);
-  if (migrated) return migrated;
   const bytes = await getSourceFile(book, scope).bytes();
   const analysis = await analyzeBook(bytes, book.sourceFileName);
   const coverFileName =
@@ -159,21 +136,6 @@ export async function refreshEpubMetadata(
         ? analysis.sections
         : book.sections,
   };
-}
-
-function migrateCachedEpubMetadata(book: BookRecord) {
-  if (book.epubStructureVersion !== 2 || !book.epubLocations?.length) return;
-  const epubLocations = cleanEpubLocations(book.epubLocations);
-  return {
-    ...book,
-    epubLocations,
-    epubStructureVersion: EPUB_STRUCTURE_VERSION,
-    sections: remapEpubSections(
-      book.sections,
-      book.epubLocations,
-      epubLocations,
-    ),
-  } satisfies BookRecord;
 }
 
 function ensureLibraryDirectory() {
@@ -204,22 +166,4 @@ async function writeExtractedEpubCover(
   destination.create();
   destination.write(cover.bytes);
   return destination.name;
-}
-
-function isBookRecordArray(value: unknown): value is BookRecord[] {
-  return Array.isArray(value) && value.every(isBookRecord);
-}
-
-function isBookRecord(value: unknown): value is BookRecord {
-  if (!value || typeof value !== "object") return false;
-  return (
-    "id" in value &&
-    typeof value.id === "string" &&
-    "title" in value &&
-    typeof value.title === "string" &&
-    "sourceFileName" in value &&
-    typeof value.sourceFileName === "string" &&
-    "sections" in value &&
-    Array.isArray(value.sections)
-  );
 }

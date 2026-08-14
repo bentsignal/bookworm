@@ -1,11 +1,9 @@
-/* eslint-disable max-lines */
 import { asc, desc, eq } from "drizzle-orm";
 
 import type { BookRecord, BookSection, EpubLocation } from "@worm/ebook-core";
 
 import { db } from "./database";
 import {
-  appMetadata,
   importBooks,
   importLocations,
   importSections,
@@ -17,27 +15,6 @@ import {
 
 export type BookScope = "import" | "library";
 export type ReadingProgress = typeof readingProgress.$inferSelect;
-
-export async function migrateLegacyBooks(books: BookRecord[]) {
-  const migrated = await db
-    .select()
-    .from(appMetadata)
-    .where(eq(appMetadata.key, legacyMigrationKey))
-    .limit(1);
-  if (migrated.length > 0) return;
-  for (const book of books) {
-    const existing = await db
-      .select({ id: libraryBooks.id })
-      .from(libraryBooks)
-      .where(eq(libraryBooks.id, book.id))
-      .limit(1);
-    if (existing.length === 0) await insertBook(book, "library");
-  }
-  await db
-    .insert(appMetadata)
-    .values({ key: legacyMigrationKey, value: new Date().toISOString() })
-    .onConflictDoNothing();
-}
 
 export async function insertBook(book: BookRecord, scope: BookScope) {
   await db.transaction(async (transaction) => {
@@ -161,7 +138,7 @@ export async function removeStoredBook(id: string, scope: BookScope) {
 }
 
 // eslint-disable-next-line complexity -- A partial progress update preserves each format's independent position fields.
-export async function saveReadingProgress(
+export function saveReadingProgress(
   bookId: string,
   update: Partial<
     Pick<
@@ -170,7 +147,11 @@ export async function saveReadingProgress(
     >
   >,
 ) {
-  const current = await getReadingProgress(bookId);
+  const current = db
+    .select()
+    .from(readingProgress)
+    .where(eq(readingProgress.bookId, bookId))
+    .get();
   const value = {
     bookId,
     pdfPage: update.pdfPage ?? current?.pdfPage,
@@ -179,19 +160,18 @@ export async function saveReadingProgress(
     sectionIndex: update.sectionIndex ?? current?.sectionIndex ?? 0,
     updatedAt: new Date().toISOString(),
   };
-  await db
-    .insert(readingProgress)
+  db.insert(readingProgress)
     .values(value)
-    .onConflictDoUpdate({ target: readingProgress.bookId, set: value });
+    .onConflictDoUpdate({ target: readingProgress.bookId, set: value })
+    .run();
 }
 
-export async function getReadingProgress(bookId: string) {
-  const rows = await db
+export function getReadingProgress(bookId: string) {
+  return db
     .select()
     .from(readingProgress)
     .where(eq(readingProgress.bookId, bookId))
-    .limit(1);
-  return rows[0];
+    .get();
 }
 
 export function libraryQueries() {
@@ -223,13 +203,6 @@ export function importQueries() {
       .from(importSections)
       .orderBy(asc(importSections.bookId), asc(importSections.position)),
   };
-}
-
-export function progressQuery(bookId: string) {
-  return db
-    .select()
-    .from(readingProgress)
-    .where(eq(readingProgress.bookId, bookId));
 }
 
 export function hydrateBooks(
@@ -330,5 +303,3 @@ function toLocations(rows: (typeof libraryLocations.$inferSelect)[]) {
     title: row.title,
   }));
 }
-
-const legacyMigrationKey = "legacy-library-json-migrated";

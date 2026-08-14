@@ -5,18 +5,18 @@ import { WebView } from "react-native-webview";
 import { File } from "expo-file-system";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 
 import type { BookRecord, EpubReaderSession } from "@worm/ebook-core";
 import { createEpubReaderSession } from "@worm/ebook-core";
 
 import type { BookScope, ReadingProgress } from "~/db/catalog";
-import { progressQuery, saveReadingProgress } from "~/db/catalog";
+import { getReadingProgress, saveReadingProgress } from "~/db/catalog";
 import { useColor } from "~/hooks/use-color";
 import { getPdfPageCountAsync, WormPdfView } from "~/native/worm-pdf";
 import { ChapterControlsPanel } from "../components/chapter-controls-panel";
 import { useLibrary } from "../library-context";
 import { getSourceFile } from "../library-storage";
+import { resolveEpubPosition } from "../reader-progress";
 
 /* eslint-disable max-lines */
 
@@ -41,7 +41,9 @@ export function ReaderScreen({ id, scope }: { id: string; scope: BookScope }) {
 }
 
 function BookReader({ book, scope }: { book: BookRecord; scope: BookScope }) {
-  const progress = useLiveQuery(progressQuery(book.id)).data[0];
+  const [progress] = useState(() =>
+    scope === "library" ? getReadingProgress(book.id) : undefined,
+  );
   if (book.format === "pdf") {
     return <PdfReader book={book} progress={progress} scope={scope} />;
   }
@@ -102,13 +104,13 @@ function PdfReader({
         expanded={controlsExpanded}
         onExpandedChange={setControlsExpanded}
         scope={scope}
-        summary={`Page ${pageNumber} of ${book.pageCount ?? 1}`}
+        detail={`Page ${pageNumber} of ${book.pageCount ?? 1}`}
       />
     </View>
   );
 }
 
-// eslint-disable-next-line max-lines-per-function, complexity -- Reader state intentionally stays together to coordinate WebView restoration, caching, navigation, and durable progress.
+// eslint-disable-next-line max-lines-per-function -- Reader state intentionally stays together to coordinate WebView restoration, caching, navigation, and durable progress.
 function EpubReader({
   book,
   progress: savedProgress,
@@ -127,18 +129,17 @@ function EpubReader({
     () => book.sections.filter((section) => section.included),
     [book.sections],
   );
-  const savedIndex = Math.max(
-    0,
-    sections.findIndex((section) => section.id === savedProgress?.sectionId),
+  const initialPosition = resolveEpubPosition(sections, savedProgress);
+  const [sectionIndex, setSectionIndex] = useState(
+    initialPosition.sectionIndex,
   );
-  const [sectionIndex, setSectionIndex] = useState(savedIndex);
   const [document, setDocument] = useState({ key: "", html: "" });
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState(
-    Math.round((savedProgress?.scrollProgress ?? 0) * 100),
+    Math.round(initialPosition.scrollProgress * 100),
   );
   const [restoreProgress, setRestoreProgress] = useState(
-    savedProgress?.scrollProgress ?? 0,
+    initialPosition.scrollProgress,
   );
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const section = sections[sectionIndex];
@@ -147,9 +148,9 @@ function EpubReader({
     undefined,
   );
   const latestProgress = useRef({
-    scrollProgress: savedProgress?.scrollProgress ?? 0,
-    sectionId: savedProgress?.sectionId ?? section?.id,
-    sectionIndex: savedIndex,
+    scrollProgress: initialPosition.scrollProgress,
+    sectionId: section?.id,
+    sectionIndex: initialPosition.sectionIndex,
   });
   const themeKey = `${background}:${foreground}:${muted}`;
   const documentKey = readerDocumentKey(book, scope, section?.id, themeKey);
@@ -205,7 +206,7 @@ function EpubReader({
     () => () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
       if (scope === "library") {
-        void saveReadingProgress(book.id, latestProgress.current);
+        saveReadingProgress(book.id, latestProgress.current);
       }
     },
     [book.id, scope],
@@ -244,7 +245,7 @@ function EpubReader({
           if (scope !== "library") return;
           if (saveTimer.current) clearTimeout(saveTimer.current);
           saveTimer.current = setTimeout(() => {
-            void saveReadingProgress(book.id, {
+            saveReadingProgress(book.id, {
               scrollProgress: next,
               sectionId: section.id,
               sectionIndex,
@@ -294,7 +295,7 @@ function EpubReader({
                 sectionIndex: index,
               };
               if (scope === "library" && nextSection) {
-                void saveReadingProgress(book.id, {
+                saveReadingProgress(book.id, {
                   scrollProgress: nextProgress,
                   sectionId: nextSection.id,
                   sectionIndex: index,
@@ -308,7 +309,6 @@ function EpubReader({
         }
         onExpandedChange={setControlsExpanded}
         scope={scope}
-        summary={`Chapter ${sectionIndex + 1} of ${sections.length} · ${progress}%`}
       />
     </View>
   );
@@ -316,18 +316,18 @@ function EpubReader({
 
 function ReaderControls({
   book,
+  detail,
   expanded,
   header,
   onExpandedChange,
   scope,
-  summary,
 }: {
   book: BookRecord;
+  detail?: string;
   expanded: boolean;
   header?: React.ReactNode;
   onExpandedChange: (expanded: boolean) => void;
   scope: BookScope;
-  summary: string;
 }) {
   const router = useRouter();
   return (
@@ -336,15 +336,7 @@ function ReaderControls({
       header={header}
       onExpandedChange={onExpandedChange}
     >
-      <View>
-        <Text
-          className="text-foreground text-[15px] font-semibold"
-          numberOfLines={1}
-        >
-          {book.title}
-        </Text>
-        <Text className="text-muted-foreground mt-1 text-sm">{summary}</Text>
-      </View>
+      <ReaderBookDetails book={book} detail={detail} />
       <Pressable
         accessibilityRole="button"
         className="bg-primary h-11 items-center justify-center rounded-full active:opacity-75"
@@ -360,6 +352,36 @@ function ReaderControls({
         </Text>
       </Pressable>
     </ChapterControlsPanel>
+  );
+}
+
+function ReaderBookDetails({
+  book,
+  detail,
+}: {
+  book: BookRecord;
+  detail?: string;
+}) {
+  return (
+    <View>
+      <Text
+        className="text-foreground text-[15px] font-semibold"
+        numberOfLines={1}
+      >
+        {book.title}
+      </Text>
+      <ReaderDetail text={book.author} />
+      <ReaderDetail text={detail} />
+    </View>
+  );
+}
+
+function ReaderDetail({ text }: { text: string | undefined }) {
+  if (!text) return null;
+  return (
+    <Text className="text-muted-foreground mt-1 text-sm" numberOfLines={1}>
+      {text}
+    </Text>
   );
 }
 
@@ -505,10 +527,15 @@ function readerDocumentKey(
 }
 
 function restoreScrollScript(progress: number) {
-  return `requestAnimationFrame(function () {
+  return `(function () {
+    function restore() {
     var maximum = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
     window.scrollTo(0, maximum * ${Math.max(0, Math.min(1, progress))});
-  }); true;`;
+    }
+    restore();
+    requestAnimationFrame(restore);
+    setTimeout(restore, 50);
+  })(); true;`;
 }
 
 function ReaderLoading({ color }: { color: string }) {
