@@ -10,16 +10,3 @@ export const paperPalette = {
   "--primary-foreground": "#fff8e9",
   "--shadow": "#3e3328",
 } as const;
-
-export const nightPaperPalette = {
-  "--accent": "#9b4f39",
-  "--background": "#afa38f",
-  "--border": "#817665",
-  "--card": "#bbae9a",
-  "--foreground": "#171411",
-  "--muted": "#aca08d",
-  "--muted-foreground": "#393229",
-  "--primary": "#493a2b",
-  "--primary-foreground": "#eee3d0",
-  "--shadow": "#241d16",
-} as const;

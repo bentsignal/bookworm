@@ -42,26 +42,6 @@ describe("app theme contrast", () => {
       }
     }
   });
-
-  it("keeps Night Paper dimmer than Paper with dark-on-light text", async () => {
-    const { appThemes } = await import("./app-appearance");
-    const nightPaper = appThemes.find((theme) => theme.key === "nightPaper");
-    const paper = appThemes.find((theme) => theme.key === "paper");
-    expect(nightPaper).toBeDefined();
-    expect(paper).toBeDefined();
-    if (!nightPaper || !paper) return;
-
-    const background = nightPaper.light["--background"];
-    const foreground = nightPaper.light["--foreground"];
-    expect(relativeLuminance(background)).toBeGreaterThan(
-      relativeLuminance(foreground),
-    );
-    expect(relativeLuminance(background)).toBeLessThan(
-      relativeLuminance(paper.light["--background"]) * 0.5,
-    );
-    expect(contrastRatio(background, foreground)).toBeGreaterThanOrEqual(7);
-    expect(contrastRatio(background, foreground)).toBeLessThan(8);
-  });
 });
 
 function contrastRatio(first: string, second: string) {

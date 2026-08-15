@@ -3,13 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Crypto from "expo-crypto";
-import { File } from "expo-file-system";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 
-import type { BookRecord, EpubReaderSession } from "@worm/ebook-core";
-import { createEpubReaderSession } from "@worm/ebook-core";
+import type { BookRecord } from "@worm/ebook-core";
 
 import type { ReaderSelectionMessage } from "../reader-annotations";
 import type {
@@ -35,6 +33,12 @@ import { ChapterBrowserModal } from "../components/chapter-browser-modal";
 import { ChapterControlsPanel } from "../components/chapter-controls-panel";
 import { ReaderSecondaryActions } from "../components/reader-secondary-actions";
 import { chapterWindowIndices } from "../epub-navigation";
+import {
+  getReaderDocument,
+  getResolvedReaderDocument,
+  readerDocumentKey,
+  readerThemeKey,
+} from "../epub-reader-cache";
 import { useLibrary } from "../library-context";
 import { getSourceFile } from "../library-storage";
 import {
@@ -227,7 +231,7 @@ function EpubReader({
     sectionId: section?.id,
     sectionIndex: initialPosition.sectionIndex,
   });
-  const themeKey = `${background}:${foreground}:${muted}`;
+  const themeKey = readerThemeKey({ background, foreground, muted });
   const documentKey = readerDocumentKey(book, scope, section?.id, themeKey);
   const [initialDocumentKey] = useState(documentKey);
   const annotationQuery = useMemo(
@@ -255,7 +259,7 @@ function EpubReader({
       const renderedSection = sections[index];
       if (!renderedSection) continue;
       const key = readerDocumentKey(book, scope, renderedSection.id, themeKey);
-      const cached = epubResolvedDocumentCache.get(key);
+      const cached = getResolvedReaderDocument(key);
       if (cached) continue;
       void getReaderDocument({
         book,
@@ -351,7 +355,7 @@ function EpubReader({
             renderedSection.id,
             themeKey,
           );
-          const html = documents[key] ?? epubResolvedDocumentCache.get(key);
+          const html = documents[key] ?? getResolvedReaderDocument(key);
           if (!html) return null;
           const active = index === sectionIndex;
           return (
@@ -861,53 +865,6 @@ function ReaderNavigationButton({
   );
 }
 
-async function getReaderDocument({
-  book,
-  scope,
-  section,
-  sourceUri,
-  theme,
-  themeKey,
-}: ReaderDocumentInput) {
-  const documentKey = readerDocumentKey(book, scope, section.id, themeKey);
-  const cached = epubDocumentCache.get(documentKey);
-  if (cached) return cached;
-  const promise = getReaderSession(book, scope, sourceUri)
-    .then((session) =>
-      session.buildSectionHtml(section, book.epubLocations ?? [], theme),
-    )
-    .then((html) => {
-      epubResolvedDocumentCache.set(documentKey, html);
-      return html;
-    });
-  epubDocumentCache.set(documentKey, promise);
-  return promise;
-}
-
-function getReaderSession(
-  book: BookRecord,
-  scope: BookScope,
-  sourceUri: string,
-) {
-  const key = `${scope}:${book.id}:${book.sourceFileName}`;
-  const cached = epubSessionCache.get(key);
-  if (cached) return cached;
-  const session = new File(sourceUri)
-    .bytes()
-    .then((bytes) => createEpubReaderSession(bytes));
-  epubSessionCache.set(key, session);
-  return session;
-}
-
-function readerDocumentKey(
-  book: BookRecord,
-  scope: BookScope,
-  sectionId: string | undefined,
-  themeKey: string,
-) {
-  return `${scope}:${book.id}:${book.modifiedAt}:${sectionId ?? "none"}:${themeKey}`;
-}
-
 function customMenuAction(key: string) {
   if (key === "wormNote") return "note" as const;
   if (key === "wormUnhighlight") return "unhighlight" as const;
@@ -942,16 +899,3 @@ function ReaderError({
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "The book could not be read.";
 }
-
-interface ReaderDocumentInput {
-  book: BookRecord;
-  scope: BookScope;
-  section: BookRecord["sections"][number];
-  sourceUri: string;
-  theme: { background: string; foreground: string; muted: string };
-  themeKey: string;
-}
-
-const epubSessionCache = new Map<string, Promise<EpubReaderSession>>();
-const epubDocumentCache = new Map<string, Promise<string>>();
-const epubResolvedDocumentCache = new Map<string, string>();
