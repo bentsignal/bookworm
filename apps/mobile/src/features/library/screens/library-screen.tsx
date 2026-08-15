@@ -9,7 +9,8 @@ import { BookCover } from "../components/book-cover";
 import { useLibrary } from "../library-context";
 
 export function LibraryScreen() {
-  const { books, isReady } = useLibrary();
+  const books = useLibrary((store) => store.books);
+  const isReady = useLibrary((store) => store.isReady);
   return (
     <View className="bg-background flex-1">
       <Stack.Screen options={{ headerShown: false }} />

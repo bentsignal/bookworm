@@ -38,6 +38,7 @@ import { AnnotationBrowserModal } from "../components/annotation-browser-modal";
 import { AnnotationNoteModal } from "../components/annotation-note-modal";
 import { ChapterBrowserModal } from "../components/chapter-browser-modal";
 import { ChapterControlsPanel } from "../components/chapter-controls-panel";
+import { ReaderSecondaryActions } from "../components/reader-secondary-actions";
 import { chapterWindowIndices } from "../epub-navigation";
 import { useLibrary } from "../library-context";
 import { getSourceFile } from "../library-storage";
@@ -56,11 +57,13 @@ import {
 /* eslint-disable max-lines */
 
 export function ReaderScreen({ id, scope }: { id: string; scope: BookScope }) {
-  const { books, imports, isReady } = useLibrary();
-  const primary = useColor("primary");
-  const book = (scope === "library" ? books : imports).find(
-    (item) => item.id === id,
+  const book = useLibrary((store) =>
+    (scope === "library" ? store.books : store.imports).find(
+      (item) => item.id === id,
+    ),
   );
+  const isReady = useLibrary((store) => store.isReady);
+  const primary = useColor("primary");
   if (!isReady) return <ReaderLoading color={primary} />;
   if (!book) {
     return (
@@ -663,8 +666,6 @@ function ReaderControls({
   scope: BookScope;
 }) {
   const router = useRouter();
-  const background = useColor("background");
-  const foreground = useColor("foreground");
   return (
     <ChapterControlsPanel
       expanded={expanded}
@@ -672,19 +673,11 @@ function ReaderControls({
       onExpandedChange={onExpandedChange}
     >
       <ReaderBookDetails book={book} detail={detail} />
-      <View className="flex-row gap-2">
-        <ReaderChapterButton
-          background={foreground}
-          foreground={background}
-          onPress={onShowChapters}
-        />
-        <ReaderAnnotationButton
-          background={foreground}
-          count={annotationCount}
-          foreground={background}
-          onPress={onShowAnnotations}
-        />
-      </View>
+      <ReaderSecondaryActions
+        annotationCount={annotationCount}
+        onShowAnnotations={onShowAnnotations}
+        onShowChapters={onShowChapters}
+      />
       <Pressable
         accessibilityRole="button"
         className="bg-primary h-11 items-center justify-center rounded-full active:opacity-75"
@@ -700,69 +693,6 @@ function ReaderControls({
         </Text>
       </Pressable>
     </ChapterControlsPanel>
-  );
-}
-
-function ReaderChapterButton({
-  background,
-  foreground,
-  onPress,
-}: {
-  background: string;
-  foreground: string;
-  onPress: (() => void) | undefined;
-}) {
-  if (!onPress) return null;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-75"
-      onPress={onPress}
-      style={{ backgroundColor: background }}
-    >
-      <SymbolView
-        name="list.bullet"
-        size={15}
-        tintColor={foreground}
-        weight="semibold"
-      />
-      <Text className="text-sm font-semibold" style={{ color: foreground }}>
-        Chapters
-      </Text>
-    </Pressable>
-  );
-}
-
-function ReaderAnnotationButton({
-  background,
-  count = 0,
-  foreground,
-  onPress,
-}: {
-  background: string;
-  count?: number;
-  foreground: string;
-  onPress: (() => void) | undefined;
-}) {
-  if (!onPress) return null;
-  const label = count > 0 ? `Saved ${count}` : "Saved";
-  return (
-    <Pressable
-      accessibilityRole="button"
-      className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-75"
-      onPress={onPress}
-      style={{ backgroundColor: background }}
-    >
-      <SymbolView
-        name="highlighter"
-        size={15}
-        tintColor={foreground}
-        weight="semibold"
-      />
-      <Text className="text-sm font-semibold" style={{ color: foreground }}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 

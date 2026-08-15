@@ -1,19 +1,12 @@
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { Redirect, Stack, useRouter } from "expo-router";
 
 import type { BookRecord, BookSection } from "@worm/ebook-core";
 
 import type { BookScope } from "~/db/catalog";
-import { useColor } from "~/hooks/use-color";
 import { BookActions, ReadButton } from "../components/book-actions";
 import { BookCover } from "../components/book-cover";
 import { SectionEditor } from "../components/section-editor";
@@ -23,15 +16,16 @@ import { useLibrary } from "../library-context";
 /* eslint-disable max-lines */
 
 export function BookScreen({ id, scope }: { id: string; scope: BookScope }) {
-  const { books, imports, isReady } = useLibrary();
-  const primary = useColor("primary");
-  const book = (scope === "library" ? books : imports).find(
-    (item) => item.id === id,
+  const book = useLibrary((store) =>
+    (scope === "library" ? store.books : store.imports).find(
+      (item) => item.id === id,
+    ),
   );
+  const isReady = useLibrary((store) => store.isReady);
   if (!isReady) {
     return (
-      <View className="bg-background flex-1 items-center justify-center">
-        <ActivityIndicator color={primary} />
+      <View className="bg-background flex-1">
+        <Stack.Screen options={{ title: "" }} />
       </View>
     );
   }
@@ -43,67 +37,69 @@ export function BookScreen({ id, scope }: { id: string; scope: BookScope }) {
 
 function BookEditor({ book, scope }: { book: BookRecord; scope: BookScope }) {
   const router = useRouter();
-  const {
-    convertPdfToEpub,
-    deleteBook,
-    exportBook,
-    replaceBookCover,
-    updateBook,
-    updateImport,
-  } = useLibrary();
+  const convertPdfToEpub = useLibrary((store) => store.convertPdfToEpub);
+  const deleteBook = useLibrary((store) => store.deleteBook);
+  const exportBook = useLibrary((store) => store.exportBook);
+  const replaceBookCover = useLibrary((store) => store.replaceBookCover);
+  const updateBook = useLibrary((store) => store.updateBook);
+  const updateImport = useLibrary((store) => store.updateImport);
   const [isConverting, setIsConverting] = useState(false);
 
   return (
-    <KeyboardAwareScrollView
-      bottomOffset={24}
-      className="bg-background flex-1"
-      contentContainerClassName="px-5 pb-20 pt-5"
-      keyboardDismissMode="interactive"
-      keyboardShouldPersistTaps="handled"
-    >
+    <Animated.View entering={FadeIn.duration(180)} style={{ flex: 1 }}>
       <Stack.Screen options={{ title: book.title }} />
-      <BookDetails
-        book={book}
-        onChange={(update) =>
-          scope === "library"
-            ? updateBook(book.id, update)
-            : updateImport(book.id, update)
-        }
-        onChangeCover={() => void replaceBookCover(book.id, scope)}
-        onRead={() =>
-          router.push({
-            pathname: "/book/[id]/read",
-            params: { id: book.id, scope },
-          })
-        }
-        scope={scope}
-      />
-      <BookStructure
-        book={book}
-        onChange={(sections) =>
-          scope === "library"
-            ? updateBook(book.id, { sections })
-            : updateImport(book.id, { sections })
-        }
-        scope={scope}
-      />
+      <KeyboardAwareScrollView
+        bottomOffset={24}
+        className="bg-background flex-1"
+        contentContainerClassName="px-5 pb-20 pt-5"
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+      >
+        <BookDetails
+          book={book}
+          onChange={(update) =>
+            scope === "library"
+              ? updateBook(book.id, update)
+              : updateImport(book.id, update)
+          }
+          onChangeCover={() => void replaceBookCover(book.id, scope)}
+          onRead={() =>
+            router.push({
+              pathname: "/book/[id]/read",
+              params: { id: book.id, scope },
+            })
+          }
+          scope={scope}
+        />
+        <BookStructure
+          book={book}
+          onChange={(sections) =>
+            scope === "library"
+              ? updateBook(book.id, { sections })
+              : updateImport(book.id, { sections })
+          }
+          scope={scope}
+        />
 
-      <LibraryBookActions
-        book={book}
-        isConverting={isConverting}
-        onConvert={() => {
-          setIsConverting(true);
-          void convertPdfToEpub(book.id).finally(() => setIsConverting(false));
-        }}
-        onDelete={() =>
-          confirmDelete(book, deleteBook, () => {
-            router.replace("/(tabs)/(library)");
-          })
-        }
-        onExport={() => void exportBook(book.id)}
-        scope={scope}
-      />
-    </KeyboardAwareScrollView>
+        <LibraryBookActions
+          book={book}
+          isConverting={isConverting}
+          onConvert={() => {
+            setIsConverting(true);
+            void convertPdfToEpub(book.id).finally(() =>
+              setIsConverting(false),
+            );
+          }}
+          onDelete={() =>
+            confirmDelete(book, deleteBook, () => {
+              router.replace("/(tabs)/(library)");
+            })
+          }
+          onExport={() => void exportBook(book.id)}
+          scope={scope}
+        />
+      </KeyboardAwareScrollView>
+    </Animated.View>
   );
 }
 

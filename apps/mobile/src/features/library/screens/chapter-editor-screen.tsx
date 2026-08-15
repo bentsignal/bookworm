@@ -28,11 +28,14 @@ export function ChapterEditorScreen({
   scope: BookScope;
   sectionId: string;
 }) {
-  const { books, imports, updateBook, updateImport } = useLibrary();
-  const router = useRouter();
-  const book = (scope === "library" ? books : imports).find(
-    (item) => item.id === id,
+  const book = useLibrary((store) =>
+    (scope === "library" ? store.books : store.imports).find(
+      (item) => item.id === id,
+    ),
   );
+  const updateBook = useLibrary((store) => store.updateBook);
+  const updateImport = useLibrary((store) => store.updateImport);
+  const router = useRouter();
   const section = book?.sections.find((item) => item.id === sectionId);
   if (!book || !section) return <MissingChapter />;
   return (

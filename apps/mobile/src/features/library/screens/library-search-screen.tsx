@@ -16,7 +16,7 @@ import { BookTile } from "./library-screen";
 export function LibrarySearchScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { books } = useLibrary();
+  const books = useLibrary((store) => store.books);
   const [query, setQuery] = useState("");
   const results = searchBooks(books, query);
 

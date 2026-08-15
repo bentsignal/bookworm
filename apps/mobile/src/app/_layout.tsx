@@ -8,6 +8,7 @@ import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 
 import { DatabaseProvider } from "~/db/database-provider";
+import { LibraryStore } from "~/features/library/library-context";
 import {
   initializeAppAppearance,
   useAppColorScheme,
@@ -47,25 +48,27 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <ThemeProvider value={theme}>
             <DatabaseProvider>
-              <Stack
-                screenOptions={{
-                  contentStyle: { backgroundColor: background },
-                  headerBackButtonDisplayMode: "minimal",
-                  headerShadowVisible: false,
-                  headerStyle: { backgroundColor: background },
-                  headerTintColor: foreground,
-                }}
-              >
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen
-                  name="book/[id]/edit"
-                  options={{ title: "Edit book" }}
-                />
-                <Stack.Screen name="book/[id]/read" />
-                <Stack.Screen name="book/[id]/section/[sectionId]" />
-              </Stack>
-              <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+              <LibraryStore>
+                <Stack
+                  screenOptions={{
+                    contentStyle: { backgroundColor: background },
+                    headerBackButtonDisplayMode: "minimal",
+                    headerShadowVisible: false,
+                    headerStyle: { backgroundColor: background },
+                    headerTintColor: foreground,
+                  }}
+                >
+                  <Stack.Screen name="index" options={{ headerShown: false }} />
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen name="book/[id]/edit" options={{ title: "" }} />
+                  <Stack.Screen name="book/[id]/read" />
+                  <Stack.Screen name="book/[id]/section/[sectionId]" />
+                </Stack>
+                <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+              </LibraryStore>
             </DatabaseProvider>
           </ThemeProvider>
         </SafeAreaProvider>

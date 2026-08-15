@@ -11,6 +11,7 @@ catalog:
   eslint: ^9.38.0
   portless: ^0.13.0
   prettier: ^3.6.2
+  rostra: ^1.0.2
   tailwindcss: ^4.1.16
   typescript: ~6.0.3
   uniwind: ^1.2.2

@@ -24,15 +24,13 @@ import { useLibrary } from "../library-context";
 
 export function AddBooksScreen() {
   const router = useRouter();
-  const {
-    addBooksToLibrary,
-    deleteImport,
-    imports,
-    isAddingToLibrary,
-    isImporting,
-    pendingImports,
-    pickBookDrafts,
-  } = useLibrary();
+  const addBooksToLibrary = useLibrary((store) => store.addBooksToLibrary);
+  const deleteImport = useLibrary((store) => store.deleteImport);
+  const imports = useLibrary((store) => store.imports);
+  const isAddingToLibrary = useLibrary((store) => store.isAddingToLibrary);
+  const isImporting = useLibrary((store) => store.isImporting);
+  const pendingImports = useLibrary((store) => store.pendingImports);
+  const pickBookDrafts = useLibrary((store) => store.pickBookDrafts);
   const isPicking = useRef(false);
   const offeredPicker = useRef(false);
   const activityColor = useColor("primary");

@@ -6,6 +6,7 @@ import { File } from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { createStore } from "rostra";
 
 import type { BookRecord } from "@worm/ebook-core";
 import {
@@ -27,6 +28,11 @@ import {
 import { extractPdfTextAsync } from "~/native/worm-pdf";
 import { stagePickedBooks } from "./import-book-files";
 import {
+  getLibraryActivity,
+  setLibraryActivity,
+  subscribeLibraryActivity,
+} from "./library-activity";
+import {
   convertedEpubDestination,
   copyImportToLibrary,
   coverDestination,
@@ -36,19 +42,17 @@ import {
   getSourceFile,
 } from "./library-storage";
 
-const listeners = new Set<() => void>();
 const libraryQuerySet = libraryQueries();
 const importQuerySet = importQueries();
-const noPendingImports = new Array<PendingBookImport>();
-let activityState = {
-  isAddingToLibrary: false,
-  pendingImports: noPendingImports,
-};
 
 export type BookImportDraft = BookRecord;
 
-export function useLibrary() {
-  const activity = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+function useInternalLibraryStore() {
+  const activity = useSyncExternalStore(
+    subscribeLibraryActivity,
+    getLibraryActivity,
+    getLibraryActivity,
+  );
   const libraryBooksResult = useLiveQuery(libraryQuerySet.books);
   const librarySectionsResult = useLiveQuery(libraryQuerySet.sections);
   const importBooksResult = useLiveQuery(importQuerySet.books);
@@ -94,6 +98,10 @@ export function useLibrary() {
       updateScopedBook(id, update, "import", imports),
   };
 }
+
+export const { Store: LibraryStore, useStore: useLibrary } = createStore(
+  useInternalLibraryStore,
+);
 
 async function convertPdfToEpub(id: string, books: BookRecord[]) {
   const book = books.find((item) => item.id === id);
@@ -143,8 +151,8 @@ async function pickBookDrafts() {
     fileName: source.name,
     id: Crypto.randomUUID(),
   }));
-  setActivity({
-    pendingImports: [...activityState.pendingImports, ...pending],
+  setLibraryActivity({
+    pendingImports: [...getLibraryActivity().pendingImports, ...pending],
   });
   await nextPaint();
   void processPickedBooks(picked.result, pending);
@@ -156,8 +164,8 @@ async function processPickedBooks(
   pending: PendingBookImport[],
 ) {
   const results = await stagePickedBooks(sources, pending, (id) =>
-    setActivity({
-      pendingImports: activityState.pendingImports.filter(
+    setLibraryActivity({
+      pendingImports: getLibraryActivity().pendingImports.filter(
         (pendingImport) => pendingImport.id !== id,
       ),
     }),
@@ -174,7 +182,7 @@ async function processPickedBooks(
 
 async function addBooksToLibrary(imports: BookRecord[]) {
   if (imports.length === 0) return false;
-  setActivity({ isAddingToLibrary: true });
+  setLibraryActivity({ isAddingToLibrary: true });
   const now = new Date().toISOString();
   const promoted = imports.map((draft) => ({
     ...draft,
@@ -194,7 +202,7 @@ async function addBooksToLibrary(imports: BookRecord[]) {
     for (const book of promoted) deleteStoredBookFiles(book, "library");
     Alert.alert("Couldn’t add those books", errorMessage(error));
   }
-  setActivity({ isAddingToLibrary: false });
+  setLibraryActivity({ isAddingToLibrary: false });
   return succeeded;
 }
 
@@ -287,20 +295,6 @@ async function readBookCover(book: BookRecord, scope: BookScope) {
     bytes: await cover.bytes(),
     extension: cover.name.split(".").pop() ?? "jpg",
   };
-}
-
-function setActivity(update: Partial<typeof activityState>) {
-  activityState = { ...activityState, ...update };
-  for (const listener of listeners) listener();
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function getSnapshot() {
-  return activityState;
 }
 
 function nextPaint() {
