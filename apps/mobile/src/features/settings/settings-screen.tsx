@@ -61,7 +61,7 @@ export function SettingsScreen() {
       <AppIconPicker />
       <StorageSettings />
       <Text className="text-muted-foreground mt-10 text-center text-xs">
-        bookworm 0.1.30
+        bookworm 0.1.31
       </Text>
     </ScrollView>
   );
