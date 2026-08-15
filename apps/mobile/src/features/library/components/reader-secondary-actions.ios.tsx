@@ -1,15 +1,6 @@
-import { useWindowDimensions } from "react-native";
-import { Button, Host, HStack } from "@expo/ui/swift-ui";
-import {
-  buttonBorderShape,
-  buttonStyle,
-  controlSize,
-  font,
-  frame,
-  tint,
-} from "@expo/ui/swift-ui/modifiers";
+import { Pressable, Text, View } from "react-native";
+import { SymbolView } from "expo-symbols";
 
-import { useAppColorScheme } from "~/features/theme/app-appearance";
 import { useColor } from "~/hooks/use-color";
 
 export function ReaderSecondaryActions({
@@ -22,64 +13,61 @@ export function ReaderSecondaryActions({
   onShowChapters?: () => void;
 }) {
   const primary = useColor("primary");
-  const { width } = useWindowDimensions();
-  const colorScheme = useAppColorScheme();
   if (!onShowAnnotations && !onShowChapters) return null;
-  const buttonWidth = (width - 64) / 2;
   return (
-    <Host
-      colorScheme={colorScheme}
-      seedColor={primary}
-      style={{ height: 44 }}
-      useViewportSizeMeasurement
-    >
-      <HStack spacing={8}>
-        <NativeReaderAction
-          label="Chapters"
-          onPress={onShowChapters}
-          primary={primary}
-          systemImage="list.bullet"
-          width={buttonWidth}
-        />
-        <NativeReaderAction
-          label={annotationCount > 0 ? `Saved ${annotationCount}` : "Saved"}
-          onPress={onShowAnnotations}
-          primary={primary}
-          systemImage="highlighter"
-          width={buttonWidth}
-        />
-      </HStack>
-    </Host>
+    <View className="w-full flex-row gap-2">
+      <ReaderAction
+        background={translucent(primary)}
+        foreground={primary}
+        label="Chapters"
+        onPress={onShowChapters}
+        systemImage="list.bullet"
+      />
+      <ReaderAction
+        background={translucent(primary)}
+        foreground={primary}
+        label={annotationCount > 0 ? `Saved ${annotationCount}` : "Saved"}
+        onPress={onShowAnnotations}
+        systemImage="highlighter"
+      />
+    </View>
   );
 }
 
-function NativeReaderAction({
+function translucent(color: string) {
+  return /^#[\da-f]{6}$/i.test(color) ? `${color}24` : color;
+}
+
+function ReaderAction({
+  background,
+  foreground,
   label,
   onPress,
-  primary,
   systemImage,
-  width,
 }: {
+  background: string;
+  foreground: string;
   label: string;
   onPress?: () => void;
-  primary: string;
   systemImage: "highlighter" | "list.bullet";
-  width: number;
 }) {
   if (!onPress) return null;
   return (
-    <Button
-      label={label}
-      modifiers={[
-        frame({ height: 44, width }),
-        buttonStyle("bordered"),
-        buttonBorderShape("capsule"),
-        controlSize("large"),
-        font({ textStyle: "subheadline", weight: "semibold" }),
-        tint(primary),
-      ]}
+    <Pressable
+      accessibilityRole="button"
+      className="h-11 min-w-0 flex-1 flex-row items-center justify-center gap-2 rounded-full active:opacity-75"
       onPress={onPress}
-      systemImage={systemImage}
-    />
+      style={{ backgroundColor: background }}
+    >
+      <SymbolView
+        name={systemImage}
+        size={15}
+        tintColor={foreground}
+        weight="semibold"
+      />
+      <Text className="text-sm font-semibold" style={{ color: foreground }}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }

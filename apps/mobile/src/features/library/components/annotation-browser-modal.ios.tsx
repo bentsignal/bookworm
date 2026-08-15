@@ -139,8 +139,13 @@ function NativeAnnotationSearch({
             foregroundStyle(foreground),
           ]}
           onTextChange={onChange}
-          placeholder="Search saved passages"
-        />
+        >
+          <TextField.Placeholder>
+            <Text modifiers={[foregroundStyle(mutedForeground)]}>
+              Search saved passages
+            </Text>
+          </TextField.Placeholder>
+        </TextField>
         <Spacer minLength={0} />
         <ClearSearchButton
           mutedForeground={mutedForeground}

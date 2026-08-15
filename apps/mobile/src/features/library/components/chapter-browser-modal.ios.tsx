@@ -58,7 +58,7 @@ export function ChapterBrowserModal({
       visible
     >
       <SafeAreaView
-        edges={["top", "bottom"]}
+        edges={["top"]}
         style={{ backgroundColor: background, flex: 1 }}
       >
         <NativeSheetHeader onClose={onClose} title="Chapters" />
@@ -114,7 +114,6 @@ function ChapterList({
             foreground={foreground}
             index={index}
             key={section.id}
-            last={index === sections.length - 1}
             mutedForeground={mutedForeground}
             onPress={() => onSelect(index)}
             primary={primary}
@@ -131,7 +130,6 @@ function ChapterRow({
   current,
   foreground,
   index,
-  last,
   mutedForeground,
   onPress,
   primary,
@@ -141,7 +139,6 @@ function ChapterRow({
   current: boolean;
   foreground: string;
   index: number;
-  last: boolean;
   mutedForeground: string;
   onPress: () => void;
   primary: string;
@@ -152,15 +149,18 @@ function ChapterRow({
       modifiers={[
         buttonStyle("plain"),
         listRowBackground(background),
-        listRowInsets({ bottom: 0, leading: 20, top: 0, trailing: 20 }),
-        listRowSeparator(last ? "hidden" : "visible", "bottom"),
+        listRowInsets({ bottom: 0, leading: 16, top: 0, trailing: 16 }),
+        listRowSeparator("hidden", "bottom"),
         tint(primary),
       ]}
       onPress={onPress}
     >
       <HStack
         alignment="center"
-        modifiers={[frame({ minHeight: 60 }), padding({ vertical: 2 })]}
+        modifiers={[
+          frame({ minHeight: 60, maxWidth: 1000 }),
+          padding({ vertical: 2 }),
+        ]}
         spacing={12}
       >
         <Text

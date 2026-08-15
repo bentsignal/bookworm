@@ -39,12 +39,13 @@ const appIcons = [
 
 const themeRank = {
   paper: 0,
-  forest: 1,
-  ink: 2,
-  clay: 3,
-  plum: 4,
-  light: 5,
-  dark: 6,
+  nightPaper: 1,
+  forest: 2,
+  ink: 3,
+  clay: 4,
+  plum: 5,
+  light: 6,
+  dark: 7,
 } satisfies Record<AppThemeKey, number>;
 const themeOptions = [...appThemes].sort(
   (left, right) => themeRank[left.key] - themeRank[right.key],
@@ -61,7 +62,7 @@ export function SettingsScreen() {
       <AppIconPicker />
       <StorageSettings />
       <Text className="text-muted-foreground mt-10 text-center text-xs">
-        bookworm 0.1.27
+        bookworm 0.1.28
       </Text>
     </ScrollView>
   );

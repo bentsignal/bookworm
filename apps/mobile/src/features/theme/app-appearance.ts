@@ -3,8 +3,11 @@ import { Appearance, useColorScheme } from "react-native";
 import { Storage } from "expo-sqlite/kv-store";
 import { Uniwind } from "uniwind";
 
+import { nightPaperPalette, paperPalette } from "./paper-palettes";
+
+type PaperThemeKey = "nightPaper" | "paper";
 export type AppThemeKey =
-  "clay" | "dark" | "forest" | "ink" | "light" | "paper" | "plum";
+  PaperThemeKey | "clay" | "dark" | "forest" | "ink" | "light" | "plum";
 
 interface AppThemeDefinition {
   dark: Record<`--${string}`, string>;
@@ -164,8 +167,17 @@ export const appThemes = [
     mode: "light",
     preview: "#e9dec6",
     previewForeground: "#302a22",
-    light: paperPalette(),
-    dark: paperPalette(),
+    light: paperPalette,
+    dark: paperPalette,
+  },
+  {
+    key: "nightPaper",
+    label: "Night Paper",
+    mode: "light",
+    preview: "#afa38f",
+    previewForeground: "#171411",
+    light: nightPaperPalette,
+    dark: nightPaperPalette,
   },
 ] satisfies AppThemeDefinition[];
 
@@ -275,20 +287,5 @@ function neutralDarkPalette() {
     "#181818",
     "#d78668",
     "#000000",
-  );
-}
-
-function paperPalette() {
-  return palette(
-    "#eee5d3",
-    "#473f35",
-    "#f6eedf",
-    "#e1d5bf",
-    "#62594e",
-    "#cec0a6",
-    "#5f4932",
-    "#fff8e9",
-    "#a65239",
-    "#3e3328",
   );
 }

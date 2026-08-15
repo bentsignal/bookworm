@@ -1,11 +1,6 @@
 // eslint-disable-next-line no-restricted-imports -- Included chapters must remain referentially stable while progress rows update reactively.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
 import { WebView } from "react-native-webview";
 import * as Crypto from "expo-crypto";
 import { File } from "expo-file-system";
@@ -99,7 +94,6 @@ function PdfReader({
   progress: ReadingProgress | undefined;
   scope: BookScope;
 }) {
-  const primary = useColor("primary");
   const sourceUri = getSourceFile(book, scope).uri;
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string>();
@@ -123,21 +117,15 @@ function PdfReader({
   }, [sourceUri]);
 
   if (error) return <ReaderError format="PDF" message={error} />;
-  if (!isReady) return <ReaderLoading color={primary} />;
   return (
     <View className="flex-1">
-      <WormPdfView
-        onPageChange={({ nativeEvent }) => {
-          setPageNumber(nativeEvent.pageNumber);
-          if (scope === "library") {
-            void saveReadingProgress(book.id, {
-              pdfPage: nativeEvent.pageNumber,
-            });
-          }
-        }}
-        pageNumber={initialPage}
+      <PdfDocument
+        bookId={book.id}
+        initialPage={initialPage}
+        isReady={isReady}
+        onPageChange={setPageNumber}
+        scope={scope}
         sourceUri={sourceUri}
-        style={{ flex: 1 }}
       />
       <ReaderControls
         book={book}
@@ -147,6 +135,39 @@ function PdfReader({
         detail={`Page ${pageNumber} of ${book.pageCount ?? 1}`}
       />
     </View>
+  );
+}
+
+function PdfDocument({
+  bookId,
+  initialPage,
+  isReady,
+  onPageChange,
+  scope,
+  sourceUri,
+}: {
+  bookId: string;
+  initialPage: number;
+  isReady: boolean;
+  onPageChange: (page: number) => void;
+  scope: BookScope;
+  sourceUri: string;
+}) {
+  if (!isReady) return <View className="bg-background flex-1" />;
+  return (
+    <WormPdfView
+      onPageChange={({ nativeEvent }) => {
+        onPageChange(nativeEvent.pageNumber);
+        if (scope === "library") {
+          void saveReadingProgress(bookId, {
+            pdfPage: nativeEvent.pageNumber,
+          });
+        }
+      }}
+      pageNumber={initialPage}
+      sourceUri={sourceUri}
+      style={{ flex: 1 }}
+    />
   );
 }
 
@@ -163,7 +184,6 @@ function EpubReader({
   const background = useColor("background");
   const foreground = useColor("foreground");
   const muted = useColor("border");
-  const primary = useColor("primary");
   const sourceUri = getSourceFile(book, scope).uri;
   const sections = useMemo(
     () => book.sections.filter((section) => section.included),
@@ -318,9 +338,6 @@ function EpubReader({
   if (!section) {
     return <ReaderError format="EPUB" message="No chapters are included." />;
   }
-  const currentDocument =
-    documents[documentKey] ?? epubResolvedDocumentCache.get(documentKey);
-  if (!currentDocument) return <ReaderLoading color={primary} />;
   return (
     <View className="flex-1">
       <View className="flex-1">
@@ -341,7 +358,6 @@ function EpubReader({
             <ReaderDocumentLayer
               accessibilityElementsHidden={!active}
               active={active}
-              animateReveal={key === initialDocumentKey}
               importantForAccessibility={
                 active ? "auto" : "no-hide-descendants"
               }
@@ -666,18 +682,14 @@ function ReaderControls({
   scope: BookScope;
 }) {
   const router = useRouter();
-  const [isOpeningEditor, setIsOpeningEditor] = useState(false);
 
-  async function openEditor() {
-    if (isOpeningEditor) return;
-    setIsOpeningEditor(true);
-    await nextFrame();
-    router.push({
+  // eslint-disable-next-line no-restricted-syntax -- The editor route is prepared after the reader shell mounts so opening it remains immediate.
+  useEffect(() => {
+    router.prefetch({
       pathname: "/book/[id]/edit",
       params: { id: book.id, scope },
     });
-    setIsOpeningEditor(false);
-  }
+  }, [book.id, router, scope]);
 
   return (
     <ChapterControlsPanel
@@ -691,73 +703,41 @@ function ReaderControls({
         onShowAnnotations={onShowAnnotations}
         onShowChapters={onShowChapters}
       />
-      <EditBookButton loading={isOpeningEditor} onPress={openEditor} />
+      <Pressable
+        accessibilityRole="button"
+        className="bg-primary h-11 items-center justify-center rounded-full active:opacity-75"
+        onPress={() =>
+          router.push({
+            pathname: "/book/[id]/edit",
+            params: { id: book.id, scope },
+          })
+        }
+      >
+        <Text className="text-primary-foreground text-sm font-semibold">
+          Edit book
+        </Text>
+      </Pressable>
     </ChapterControlsPanel>
   );
 }
 
-function EditBookButton({
-  loading,
-  onPress,
-}: {
-  loading: boolean;
-  onPress: () => Promise<void>;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      className="bg-primary h-11 items-center justify-center rounded-full active:opacity-75"
-      disabled={loading}
-      onPress={() => void onPress()}
-    >
-      <EditBookButtonContent loading={loading} />
-    </Pressable>
-  );
-}
-
-function EditBookButtonContent({ loading }: { loading: boolean }) {
-  const primaryForeground = useColor("primary-foreground");
-  if (loading) return <ActivityIndicator color={primaryForeground} />;
-  return (
-    <Text className="text-primary-foreground text-sm font-semibold">
-      Edit book
-    </Text>
-  );
-}
-
-function nextFrame() {
-  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-}
-
 function ReaderDocumentLayer({
   active,
-  animateReveal,
   children,
   revealed,
   ...viewProps
-}: React.ComponentProps<typeof Animated.View> & {
+}: React.ComponentProps<typeof View> & {
   active: boolean;
-  animateReveal: boolean;
   revealed: boolean;
 }) {
-  const opacity = useSharedValue(active && revealed ? 1 : 0);
-
-  // eslint-disable-next-line no-restricted-syntax -- The saved reader position must be hidden until the WebView has restored it.
-  useEffect(() => {
-    opacity.value = withTiming(active && revealed ? 1 : 0, {
-      duration: active && animateReveal && revealed ? 160 : 0,
-    });
-  }, [active, animateReveal, opacity, revealed]);
-
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
-    <Animated.View
+    <View
       {...viewProps}
       className="absolute inset-0"
-      style={animatedStyle}
+      style={{ opacity: active && revealed ? 1 : 0 }}
     >
       {children}
-    </Animated.View>
+    </View>
   );
 }
 
