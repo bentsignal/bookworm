@@ -22,7 +22,7 @@ export interface PendingBookImport {
 export async function stagePickedBooks(
   sources: File[],
   pending: PendingBookImport[],
-  onSettled: (id: string) => void,
+  onSettled: (id: string, succeeded: boolean) => void,
 ) {
   return Promise.all(
     sources.map((source, index) =>
@@ -34,7 +34,7 @@ export async function stagePickedBooks(
 async function stagePickedBook(
   source: File,
   pending: PendingBookImport | undefined,
-  onSettled: (id: string) => void,
+  onSettled: (id: string, succeeded: boolean) => void,
 ) {
   if (!pending) return undefined;
   let stored: BookRecord | undefined;
@@ -59,7 +59,7 @@ async function stagePickedBook(
     }
     failure = { fileName: source.name, message: errorMessage(error) };
   }
-  onSettled(pending.id);
+  onSettled(pending.id, failure === undefined);
   return failure;
 }
 

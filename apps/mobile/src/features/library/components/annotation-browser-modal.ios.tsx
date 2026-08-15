@@ -45,7 +45,7 @@ export function AnnotationBrowserModal({
 }) {
   const [query, setQuery] = useState("");
   const background = useColor("background");
-  const card = useColor("card");
+  const border = useColor("border");
   const foreground = useColor("foreground");
   const muted = useColor("muted");
   const mutedForeground = useColor("muted-foreground");
@@ -76,7 +76,7 @@ export function AnnotationBrowserModal({
         <View style={{ flex: 1 }}>
           <AnnotationResults
             background={background}
-            card={card}
+            border={border}
             colorScheme={colorScheme}
             foreground={foreground}
             mutedForeground={mutedForeground}
@@ -113,12 +113,12 @@ function NativeAnnotationSearch({
     <Host
       colorScheme={colorScheme}
       seedColor={primary}
-      style={{ height: 58, marginHorizontal: 16, marginTop: 10 }}
+      style={{ height: 40, marginHorizontal: 16, marginVertical: 12 }}
     >
       <HStack
         alignment="center"
         modifiers={[
-          frame({ height: 44 }),
+          frame({ height: 40 }),
           padding({ horizontal: 12 }),
           backgroundModifier(
             background,
@@ -176,7 +176,7 @@ function ClearSearchButton({
 
 function AnnotationResults({
   background,
-  card,
+  border,
   colorScheme,
   foreground,
   mutedForeground,
@@ -186,7 +186,7 @@ function AnnotationResults({
   results,
 }: {
   background: string;
-  card: string;
+  border: string;
   colorScheme: "dark" | "light";
   foreground: string;
   mutedForeground: string;
@@ -207,7 +207,7 @@ function AnnotationResults({
     <Host colorScheme={colorScheme} seedColor={primary} style={{ flex: 1 }}>
       <List
         modifiers={[
-          listStyle("insetGrouped"),
+          listStyle("plain"),
           scrollContentBackground("hidden"),
           backgroundModifier(background),
         ]}
@@ -215,9 +215,11 @@ function AnnotationResults({
         {results.map((annotation) => (
           <NativeAnnotationRow
             annotation={annotation}
-            card={card}
+            background={background}
+            border={border}
             foreground={foreground}
             key={annotation.id}
+            last={annotation.id === results.at(-1)?.id}
             mutedForeground={mutedForeground}
             onPress={() => onSelect(annotation)}
             primary={primary}

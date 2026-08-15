@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import Animated, { FadeIn } from "react-native-reanimated";
 import { Redirect, Stack, useRouter } from "expo-router";
 
 import type { BookRecord, BookSection } from "@worm/ebook-core";
@@ -46,7 +45,7 @@ function BookEditor({ book, scope }: { book: BookRecord; scope: BookScope }) {
   const [isConverting, setIsConverting] = useState(false);
 
   return (
-    <Animated.View entering={FadeIn.duration(180)} style={{ flex: 1 }}>
+    <View className="flex-1">
       <Stack.Screen options={{ title: book.title }} />
       <KeyboardAwareScrollView
         bottomOffset={24}
@@ -99,7 +98,7 @@ function BookEditor({ book, scope }: { book: BookRecord; scope: BookScope }) {
           scope={scope}
         />
       </KeyboardAwareScrollView>
-    </Animated.View>
+    </View>
   );
 }
 

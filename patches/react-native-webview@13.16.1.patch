@@ -11,7 +11,7 @@
  #if TARGET_OS_IOS
  // runtime trick to remove WKWebView keyboard default toolbar
  // see: http://stackoverflow.com/questions/19033292/ios-7-uiwebview-keyboard-issue/19042279#19042279
-@@ -87,19 +91,64 @@
+@@ -87,19 +91,71 @@
        }
    }
  
@@ -33,7 +33,7 @@
 +      if (!self.menuItems || self.menuItems.count == 0) {
 +        return;
        }
-+      NSMutableArray<UICommand *> *commands = [NSMutableArray new];
++      NSMutableArray<UIMenuElement *> *commands = [NSMutableArray new];
 +      for (NSDictionary *menuItem in self.menuItems) {
 +        NSString *label = [RCTConvert NSString:menuItem[@"label"]];
 +        NSString *key = [RCTConvert NSString:menuItem[@"key"]];
@@ -43,6 +43,13 @@
 +                                                  action:NSSelectorFromString(selectorName)
 +                                            propertyList:nil];
 +        [commands addObject:command];
++      }
++      UIMenu *lookupMenu = [builder menuForIdentifier:UIMenuLookup];
++      if (lookupMenu) {
++        NSUInteger lookupIndex = MIN((NSUInteger)2, commands.count);
++        NSIndexSet *lookupIndexes = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(lookupIndex, lookupMenu.children.count)];
++        [commands insertObjects:lookupMenu.children atIndexes:lookupIndexes];
++        [builder removeMenuForIdentifier:UIMenuLookup];
 +      }
 +      UIMenu *customMenu = [UIMenu menuWithTitle:@""
 +                                           image:nil

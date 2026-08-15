@@ -7,6 +7,7 @@ import {
   listRowBackground,
   listRowInsets,
   listRowSeparator,
+  listRowSeparatorTint,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 
@@ -14,15 +15,19 @@ import type { ReaderAnnotation } from "~/db/catalog";
 
 export function NativeAnnotationRow({
   annotation,
-  card,
+  background,
+  border,
   foreground,
+  last,
   mutedForeground,
   onPress,
   primary,
 }: {
   annotation: ReaderAnnotation;
-  card: string;
+  background: string;
+  border: string;
   foreground: string;
+  last: boolean;
   mutedForeground: string;
   onPress: () => void;
   primary: string;
@@ -31,9 +36,10 @@ export function NativeAnnotationRow({
     <Button
       modifiers={[
         buttonStyle("plain"),
-        listRowBackground(card),
-        listRowInsets({ bottom: 12, leading: 16, top: 12, trailing: 12 }),
-        listRowSeparator("visible", "bottom"),
+        listRowBackground(background),
+        listRowInsets({ bottom: 13, leading: 20, top: 13, trailing: 16 }),
+        listRowSeparator(last ? "hidden" : "visible", "bottom"),
+        listRowSeparatorTint(border, "bottom"),
         tint(primary),
       ]}
       onPress={onPress}

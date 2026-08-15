@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-restricted-imports -- Stable hydrated rows keep reader effects from restarting on unrelated SQLite notifications.
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { Alert } from "react-native";
 import * as Crypto from "expo-crypto";
 import { File } from "expo-file-system";
@@ -31,6 +31,7 @@ import {
   getLibraryActivity,
   setLibraryActivity,
   subscribeLibraryActivity,
+  unresolvedPendingImports,
 } from "./library-activity";
 import {
   convertedEpubDestination,
@@ -69,11 +70,21 @@ function useInternalLibraryStore() {
     () => hydrateBooks(importBookRows, importSectionRows),
     [importBookRows, importSectionRows],
   );
+  const pendingImports = useMemo(
+    () => unresolvedPendingImports(activity.pendingImports, imports),
+    [activity.pendingImports, imports],
+  );
+  // eslint-disable-next-line no-restricted-syntax -- SQLite publishes inserted imports asynchronously, so the pending UI remains until the external query observes each row.
+  useEffect(() => {
+    if (pendingImports === activity.pendingImports) return;
+    setLibraryActivity({ pendingImports });
+  }, [activity.pendingImports, pendingImports]);
   return {
     ...activity,
     books,
     imports,
-    isImporting: activity.pendingImports.length > 0,
+    pendingImports,
+    isImporting: pendingImports.length > 0,
     isReady: Boolean(
       libraryBooksResult.updatedAt &&
       librarySectionsResult.updatedAt &&
@@ -163,13 +174,14 @@ async function processPickedBooks(
   sources: File[],
   pending: PendingBookImport[],
 ) {
-  const results = await stagePickedBooks(sources, pending, (id) =>
+  const results = await stagePickedBooks(sources, pending, (id, succeeded) => {
+    if (succeeded) return;
     setLibraryActivity({
       pendingImports: getLibraryActivity().pendingImports.filter(
         (pendingImport) => pendingImport.id !== id,
       ),
-    }),
-  );
+    });
+  });
   const failures = results.filter((result) => result !== undefined);
   if (failures.length === 0) return;
   Alert.alert(

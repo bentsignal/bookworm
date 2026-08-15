@@ -666,6 +666,13 @@ function ReaderControls({
   scope: BookScope;
 }) {
   const router = useRouter();
+  // eslint-disable-next-line no-restricted-syntax -- Expo Router prefetches the editor module while the reader is idle so navigation is immediate.
+  useEffect(() => {
+    router.prefetch({
+      pathname: "/book/[id]/edit",
+      params: { id: book.id, scope },
+    });
+  }, [book.id, router, scope]);
   return (
     <ChapterControlsPanel
       expanded={expanded}

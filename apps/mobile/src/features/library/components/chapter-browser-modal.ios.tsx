@@ -19,6 +19,7 @@ import {
   listRowBackground,
   listRowInsets,
   listRowSeparator,
+  listRowSeparatorTint,
   listStyle,
   padding,
   scrollContentBackground,
@@ -45,7 +46,7 @@ export function ChapterBrowserModal({
   visible: boolean;
 }) {
   const background = useColor("background");
-  const card = useColor("card");
+  const border = useColor("border");
   const foreground = useColor("foreground");
   const mutedForeground = useColor("muted-foreground");
   const primary = useColor("primary");
@@ -66,7 +67,7 @@ export function ChapterBrowserModal({
         <View style={{ flex: 1 }}>
           <ChapterList
             background={background}
-            card={card}
+            border={border}
             colorScheme={colorScheme}
             currentIndex={currentIndex}
             foreground={foreground}
@@ -83,7 +84,7 @@ export function ChapterBrowserModal({
 
 function ChapterList({
   background,
-  card,
+  border,
   colorScheme,
   currentIndex,
   foreground,
@@ -93,7 +94,7 @@ function ChapterList({
   sections,
 }: {
   background: string;
-  card: string;
+  border: string;
   colorScheme: "dark" | "light";
   currentIndex: number;
   foreground: string;
@@ -113,11 +114,13 @@ function ChapterList({
       >
         {sections.map((section, index) => (
           <ChapterRow
-            card={card}
+            background={background}
+            border={border}
             current={index === currentIndex}
             foreground={foreground}
             index={index}
             key={section.id}
+            last={index === sections.length - 1}
             mutedForeground={mutedForeground}
             onPress={() => onSelect(index)}
             primary={primary}
@@ -130,19 +133,23 @@ function ChapterList({
 }
 
 function ChapterRow({
-  card,
+  background,
+  border,
   current,
   foreground,
   index,
+  last,
   mutedForeground,
   onPress,
   primary,
   section,
 }: {
-  card: string;
+  background: string;
+  border: string;
   current: boolean;
   foreground: string;
   index: number;
+  last: boolean;
   mutedForeground: string;
   onPress: () => void;
   primary: string;
@@ -152,16 +159,17 @@ function ChapterRow({
     <Button
       modifiers={[
         buttonStyle("plain"),
-        listRowBackground(card),
+        listRowBackground(background),
         listRowInsets({ bottom: 0, leading: 20, top: 0, trailing: 20 }),
-        listRowSeparator("visible", "bottom"),
+        listRowSeparator(last ? "hidden" : "visible", "bottom"),
+        listRowSeparatorTint(border, "bottom"),
         tint(primary),
       ]}
       onPress={onPress}
     >
       <HStack
         alignment="center"
-        modifiers={[frame({ minHeight: 64 }), padding({ all: 2 })]}
+        modifiers={[frame({ minHeight: 60 }), padding({ vertical: 2 })]}
         spacing={12}
       >
         <Text
@@ -200,5 +208,5 @@ function CurrentChapterIndicator({
   primary: string;
 }) {
   if (!current) return null;
-  return <Image color={primary} size={14} systemName="checkmark" />;
+  return <Image color={primary} size={16} systemName="checkmark.circle.fill" />;
 }

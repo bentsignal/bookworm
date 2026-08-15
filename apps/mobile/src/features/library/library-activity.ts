@@ -20,3 +20,14 @@ export function subscribeLibraryActivity(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
+
+export function unresolvedPendingImports(
+  pendingImports: PendingBookImport[],
+  visibleImports: { id: string }[],
+) {
+  const visibleIds = new Set(visibleImports.map(({ id }) => id));
+  const unresolved = pendingImports.filter(({ id }) => !visibleIds.has(id));
+  return unresolved.length === pendingImports.length
+    ? pendingImports
+    : unresolved;
+}
