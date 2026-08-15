@@ -22,7 +22,6 @@ import {
   lineLimit,
   padding,
   shapes,
-  strokeBorder,
   textFieldStyle,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
@@ -92,7 +91,6 @@ function NativeNoteEditor({
   const latestNote = useRef(initialValue);
   const [canSave, setCanSave] = useState(false);
   const background = useColor("background");
-  const border = useColor("border");
   const card = useColor("card");
   const foreground = useColor("foreground");
   const muted = useColor("muted");
@@ -173,7 +171,6 @@ function NativeNoteEditor({
                     roundedCornerStyle: "continuous",
                   }),
                 ),
-                strokeBorder({ color: border, cornerRadius: 14 }),
               ]}
               onTextChange={(value) => {
                 latestNote.current = value;
@@ -214,8 +211,11 @@ function NativeNoteHeader({
   const border = useColor("border");
   return (
     <View
-      className="h-[68px] flex-row items-center justify-between border-b px-3 pt-1"
-      style={{ borderColor: border }}
+      className="h-[68px] flex-row items-center justify-between px-3 pt-1"
+      style={{
+        borderBottomColor: border,
+        borderBottomWidth: 0.5,
+      }}
     >
       <NativeHeaderButton
         colorScheme={colorScheme}
@@ -286,10 +286,10 @@ function DeleteNoteButton({
     <Button
       label="Delete note"
       modifiers={[
+        frame({ height: 44, maxWidth: 1000 }),
         buttonStyle("bordered"),
         buttonBorderShape("capsule"),
         controlSize("large"),
-        frame({ height: 44, maxWidth: 1000 }),
         tint(accent),
       ]}
       onPress={onDelete}

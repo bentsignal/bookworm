@@ -19,7 +19,6 @@ import {
   listRowBackground,
   listRowInsets,
   listRowSeparator,
-  listRowSeparatorTint,
   listStyle,
   padding,
   scrollContentBackground,
@@ -46,7 +45,6 @@ export function ChapterBrowserModal({
   visible: boolean;
 }) {
   const background = useColor("background");
-  const border = useColor("border");
   const foreground = useColor("foreground");
   const mutedForeground = useColor("muted-foreground");
   const primary = useColor("primary");
@@ -67,7 +65,6 @@ export function ChapterBrowserModal({
         <View style={{ flex: 1 }}>
           <ChapterList
             background={background}
-            border={border}
             colorScheme={colorScheme}
             currentIndex={currentIndex}
             foreground={foreground}
@@ -84,7 +81,6 @@ export function ChapterBrowserModal({
 
 function ChapterList({
   background,
-  border,
   colorScheme,
   currentIndex,
   foreground,
@@ -94,7 +90,6 @@ function ChapterList({
   sections,
 }: {
   background: string;
-  border: string;
   colorScheme: "dark" | "light";
   currentIndex: number;
   foreground: string;
@@ -115,7 +110,6 @@ function ChapterList({
         {sections.map((section, index) => (
           <ChapterRow
             background={background}
-            border={border}
             current={index === currentIndex}
             foreground={foreground}
             index={index}
@@ -134,7 +128,6 @@ function ChapterList({
 
 function ChapterRow({
   background,
-  border,
   current,
   foreground,
   index,
@@ -145,7 +138,6 @@ function ChapterRow({
   section,
 }: {
   background: string;
-  border: string;
   current: boolean;
   foreground: string;
   index: number;
@@ -162,7 +154,6 @@ function ChapterRow({
         listRowBackground(background),
         listRowInsets({ bottom: 0, leading: 20, top: 0, trailing: 20 }),
         listRowSeparator(last ? "hidden" : "visible", "bottom"),
-        listRowSeparatorTint(border, "bottom"),
         tint(primary),
       ]}
       onPress={onPress}

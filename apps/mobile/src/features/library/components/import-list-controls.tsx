@@ -10,7 +10,6 @@ export function ImportListHeader({
   onAdd,
   onChooseMore,
   pendingCount,
-  spinnerColor,
   style,
 }: {
   canAdd: boolean;
@@ -19,7 +18,6 @@ export function ImportListHeader({
   onAdd: () => void;
   onChooseMore: () => void;
   pendingCount: number;
-  spinnerColor: string;
   style: ViewStyle;
 }) {
   return (
@@ -45,7 +43,6 @@ export function ImportListHeader({
         </Pressable>
       </View>
       <AddToLibraryButton
-        activityColor={spinnerColor}
         canAdd={canAdd}
         count={count}
         isAdding={isAddingToLibrary}
@@ -98,13 +95,11 @@ function ImportingStatus({ count }: { count: number }) {
 }
 
 function AddToLibraryButton({
-  activityColor,
   canAdd,
   count,
   isAdding,
   onAdd,
 }: {
-  activityColor: string;
   canAdd: boolean;
   count: number;
   isAdding: boolean;
@@ -113,33 +108,15 @@ function AddToLibraryButton({
   return (
     <Pressable
       accessibilityRole="button"
-      className="bg-primary mt-3 h-11 items-center justify-center rounded-full active:opacity-75 disabled:opacity-50"
+      className="bg-primary mt-3 h-11 items-center justify-center rounded-full active:opacity-75"
       disabled={!canAdd}
       onPress={onAdd}
+      style={{ opacity: !canAdd && !isAdding ? 0.5 : 1 }}
     >
-      <AddButtonContent
-        activityColor={activityColor}
-        count={count}
-        isAdding={isAdding}
-      />
+      <Text className="text-primary-foreground text-[15px] font-semibold">
+        {addButtonLabel(count)}
+      </Text>
     </Pressable>
-  );
-}
-
-function AddButtonContent({
-  activityColor,
-  count,
-  isAdding,
-}: {
-  activityColor: string;
-  count: number;
-  isAdding: boolean;
-}) {
-  if (isAdding) return <ActivityIndicator color={activityColor} />;
-  return (
-    <Text className="text-primary-foreground text-[15px] font-semibold">
-      {addButtonLabel(count)}
-    </Text>
   );
 }
 

@@ -4,13 +4,14 @@ import { Modal, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Button,
-  ContentUnavailableView,
   Host,
   HStack,
   Image,
   List,
   Spacer,
+  Text,
   TextField,
+  VStack,
 } from "@expo/ui/swift-ui";
 import {
   background as backgroundModifier,
@@ -19,6 +20,7 @@ import {
   foregroundStyle,
   frame,
   listStyle,
+  multilineTextAlignment,
   padding,
   scrollContentBackground,
   shapes,
@@ -45,7 +47,6 @@ export function AnnotationBrowserModal({
 }) {
   const [query, setQuery] = useState("");
   const background = useColor("background");
-  const border = useColor("border");
   const foreground = useColor("foreground");
   const muted = useColor("muted");
   const mutedForeground = useColor("muted-foreground");
@@ -76,7 +77,6 @@ export function AnnotationBrowserModal({
         <View style={{ flex: 1 }}>
           <AnnotationResults
             background={background}
-            border={border}
             colorScheme={colorScheme}
             foreground={foreground}
             mutedForeground={mutedForeground}
@@ -176,7 +176,6 @@ function ClearSearchButton({
 
 function AnnotationResults({
   background,
-  border,
   colorScheme,
   foreground,
   mutedForeground,
@@ -186,7 +185,6 @@ function AnnotationResults({
   results,
 }: {
   background: string;
-  border: string;
   colorScheme: "dark" | "light";
   foreground: string;
   mutedForeground: string;
@@ -199,7 +197,40 @@ function AnnotationResults({
     const empty = annotationEmptyState(query);
     return (
       <Host colorScheme={colorScheme} seedColor={primary} style={{ flex: 1 }}>
-        <ContentUnavailableView {...empty} />
+        <VStack
+          alignment="center"
+          modifiers={[
+            frame({ maxHeight: 1000, maxWidth: 1000 }),
+            padding({ horizontal: 36 }),
+          ]}
+          spacing={8}
+        >
+          <Spacer />
+          <Image
+            color={mutedForeground}
+            size={30}
+            systemName={empty.systemImage}
+          />
+          <Text
+            modifiers={[
+              font({ textStyle: "headline" }),
+              foregroundStyle(foreground),
+              multilineTextAlignment("center"),
+            ]}
+          >
+            {empty.title}
+          </Text>
+          <Text
+            modifiers={[
+              font({ textStyle: "subheadline" }),
+              foregroundStyle(mutedForeground),
+              multilineTextAlignment("center"),
+            ]}
+          >
+            {empty.description}
+          </Text>
+          <Spacer />
+        </VStack>
       </Host>
     );
   }
@@ -216,7 +247,6 @@ function AnnotationResults({
           <NativeAnnotationRow
             annotation={annotation}
             background={background}
-            border={border}
             foreground={foreground}
             key={annotation.id}
             last={annotation.id === results.at(-1)?.id}

@@ -666,13 +666,19 @@ function ReaderControls({
   scope: BookScope;
 }) {
   const router = useRouter();
-  // eslint-disable-next-line no-restricted-syntax -- Expo Router prefetches the editor module while the reader is idle so navigation is immediate.
-  useEffect(() => {
-    router.prefetch({
+  const [isOpeningEditor, setIsOpeningEditor] = useState(false);
+
+  async function openEditor() {
+    if (isOpeningEditor) return;
+    setIsOpeningEditor(true);
+    await nextFrame();
+    router.push({
       pathname: "/book/[id]/edit",
       params: { id: book.id, scope },
     });
-  }, [book.id, router, scope]);
+    setIsOpeningEditor(false);
+  }
+
   return (
     <ChapterControlsPanel
       expanded={expanded}
@@ -685,22 +691,42 @@ function ReaderControls({
         onShowAnnotations={onShowAnnotations}
         onShowChapters={onShowChapters}
       />
-      <Pressable
-        accessibilityRole="button"
-        className="bg-primary h-11 items-center justify-center rounded-full active:opacity-75"
-        onPress={() =>
-          router.push({
-            pathname: "/book/[id]/edit",
-            params: { id: book.id, scope },
-          })
-        }
-      >
-        <Text className="text-primary-foreground text-sm font-semibold">
-          Edit book
-        </Text>
-      </Pressable>
+      <EditBookButton loading={isOpeningEditor} onPress={openEditor} />
     </ChapterControlsPanel>
   );
+}
+
+function EditBookButton({
+  loading,
+  onPress,
+}: {
+  loading: boolean;
+  onPress: () => Promise<void>;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="bg-primary h-11 items-center justify-center rounded-full active:opacity-75"
+      disabled={loading}
+      onPress={() => void onPress()}
+    >
+      <EditBookButtonContent loading={loading} />
+    </Pressable>
+  );
+}
+
+function EditBookButtonContent({ loading }: { loading: boolean }) {
+  const primaryForeground = useColor("primary-foreground");
+  if (loading) return <ActivityIndicator color={primaryForeground} />;
+  return (
+    <Text className="text-primary-foreground text-sm font-semibold">
+      Edit book
+    </Text>
+  );
+}
+
+function nextFrame() {
+  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 function ReaderDocumentLayer({

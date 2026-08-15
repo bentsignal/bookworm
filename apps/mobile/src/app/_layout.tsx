@@ -58,10 +58,13 @@ export default function RootLayout() {
                     headerTintColor: foreground,
                   }}
                 >
-                  <Stack.Screen name="index" options={{ headerShown: false }} />
+                  <Stack.Screen
+                    name="index"
+                    options={{ animation: "none", headerShown: false }}
+                  />
                   <Stack.Screen
                     name="(tabs)"
-                    options={{ headerShown: false }}
+                    options={{ animation: "none", headerShown: false }}
                   />
                   <Stack.Screen name="book/[id]/edit" options={{ title: "" }} />
                   <Stack.Screen name="book/[id]/read" />

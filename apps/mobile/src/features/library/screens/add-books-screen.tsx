@@ -34,7 +34,6 @@ export function AddBooksScreen() {
   const isPicking = useRef(false);
   const offeredPicker = useRef(false);
   const activityColor = useColor("primary");
-  const activityForeground = useColor("primary-foreground");
 
   async function chooseBooks() {
     if (isPicking.current) return;
@@ -86,7 +85,6 @@ export function AddBooksScreen() {
   return (
     <ImportDraftList
       activityColor={activityColor}
-      activityForeground={activityForeground}
       canAdd={canAdd}
       drafts={imports}
       isAddingToLibrary={isAddingToLibrary}
@@ -100,7 +98,6 @@ export function AddBooksScreen() {
 
 function ImportDraftList({
   activityColor,
-  activityForeground,
   canAdd,
   drafts,
   isAddingToLibrary,
@@ -110,7 +107,6 @@ function ImportDraftList({
   pendingImports,
 }: {
   activityColor: string;
-  activityForeground: string;
   canAdd: boolean;
   drafts: BookRecord[];
   isAddingToLibrary: boolean;
@@ -131,7 +127,6 @@ function ImportDraftList({
         onAdd={onAdd}
         onChooseMore={onChooseMore}
         pendingCount={pendingImports.length}
-        spinnerColor={activityForeground}
         style={{ paddingTop: insets.top + 10 }}
       />
       <FlatList

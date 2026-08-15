@@ -1,5 +1,5 @@
-import { View } from "react-native";
-import { Button, Host } from "@expo/ui/swift-ui";
+import { useWindowDimensions } from "react-native";
+import { Button, Host, HStack } from "@expo/ui/swift-ui";
 import {
   buttonBorderShape,
   buttonStyle,
@@ -22,67 +22,64 @@ export function ReaderSecondaryActions({
   onShowChapters?: () => void;
 }) {
   const primary = useColor("primary");
-  const foreground = useColor("foreground");
+  const { width } = useWindowDimensions();
   const colorScheme = useAppColorScheme();
   if (!onShowAnnotations && !onShowChapters) return null;
-  return (
-    <View className="w-full flex-row gap-2">
-      <NativeReaderAction
-        colorScheme={colorScheme}
-        foreground={foreground}
-        label="Chapters"
-        onPress={onShowChapters}
-        primary={primary}
-        systemImage="list.bullet"
-      />
-      <NativeReaderAction
-        colorScheme={colorScheme}
-        foreground={foreground}
-        label={annotationCount > 0 ? `Saved ${annotationCount}` : "Saved"}
-        onPress={onShowAnnotations}
-        primary={primary}
-        systemImage="highlighter"
-      />
-    </View>
-  );
-}
-
-function NativeReaderAction({
-  colorScheme,
-  foreground,
-  label,
-  onPress,
-  primary,
-  systemImage,
-}: {
-  colorScheme: "dark" | "light";
-  foreground: string;
-  label: string;
-  onPress?: () => void;
-  primary: string;
-  systemImage: "highlighter" | "list.bullet";
-}) {
-  if (!onPress) return null;
+  const buttonWidth = (width - 64) / 2;
   return (
     <Host
       colorScheme={colorScheme}
       seedColor={primary}
-      style={{ flex: 1, height: 44 }}
+      style={{ height: 44 }}
       useViewportSizeMeasurement
     >
-      <Button
-        label={label}
-        modifiers={[
-          buttonStyle("bordered"),
-          buttonBorderShape("capsule"),
-          controlSize("large"),
-          font({ textStyle: "subheadline", weight: "semibold" }),
-          frame({ height: 44, maxWidth: 1000 }),
-          tint(colorScheme === "dark" ? foreground : primary),
-        ]}
-        onPress={onPress}
-        systemImage={systemImage}
-      />
+      <HStack spacing={8}>
+        <NativeReaderAction
+          label="Chapters"
+          onPress={onShowChapters}
+          primary={primary}
+          systemImage="list.bullet"
+          width={buttonWidth}
+        />
+        <NativeReaderAction
+          label={annotationCount > 0 ? `Saved ${annotationCount}` : "Saved"}
+          onPress={onShowAnnotations}
+          primary={primary}
+          systemImage="highlighter"
+          width={buttonWidth}
+        />
+      </HStack>
     </Host>
+  );
+}
+
+function NativeReaderAction({
+  label,
+  onPress,
+  primary,
+  systemImage,
+  width,
+}: {
+  label: string;
+  onPress?: () => void;
+  primary: string;
+  systemImage: "highlighter" | "list.bullet";
+  width: number;
+}) {
+  if (!onPress) return null;
+  return (
+    <Button
+      label={label}
+      modifiers={[
+        frame({ height: 44, width }),
+        buttonStyle("bordered"),
+        buttonBorderShape("capsule"),
+        controlSize("large"),
+        font({ textStyle: "subheadline", weight: "semibold" }),
+        tint(primary),
+      ]}
+      onPress={onPress}
+      systemImage={systemImage}
+    />
   );
 }

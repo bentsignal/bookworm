@@ -61,7 +61,7 @@ export function SettingsScreen() {
       <AppIconPicker />
       <StorageSettings />
       <Text className="text-muted-foreground mt-10 text-center text-xs">
-        bookworm 0.1.24
+        bookworm 0.1.27
       </Text>
     </ScrollView>
   );
@@ -137,6 +137,7 @@ function ThemeCheck({ color, selected }: { color: string; selected: boolean }) {
 }
 
 function AppIconPicker() {
+  const border = useColor("border");
   const foreground = useColor("foreground");
   const [iconName, setIconName] = useState(() => getAppIcon());
   const selectedIcon =
@@ -162,8 +163,8 @@ function AppIconPicker() {
               source={item.image}
               style={{
                 borderColor:
-                  item.nativeName === selectedIcon ? foreground : "transparent",
-                borderWidth: 3,
+                  item.nativeName === selectedIcon ? foreground : border,
+                borderWidth: item.nativeName === selectedIcon ? 3 : 1,
               }}
             />
             <Text className="text-muted-foreground text-xs">{item.label}</Text>

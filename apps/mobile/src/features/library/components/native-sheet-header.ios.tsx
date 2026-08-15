@@ -18,8 +18,11 @@ export function NativeSheetHeader({
   const colorScheme = useAppColorScheme();
   return (
     <View
-      className="h-[68px] flex-row items-center justify-between border-b px-4 pt-1"
-      style={{ borderColor: border }}
+      className="h-[68px] flex-row items-center justify-between px-4 pt-1"
+      style={{
+        borderBottomColor: border,
+        borderBottomWidth: 0.5,
+      }}
     >
       <View className="w-[72px]" />
       <Text
