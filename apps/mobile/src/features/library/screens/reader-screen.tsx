@@ -1,6 +1,13 @@
 // eslint-disable-next-line no-restricted-imports -- Included chapters must remain referentially stable while progress rows update reactively.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import { WebView } from "react-native-webview";
 import * as Crypto from "expo-crypto";
 import { Stack, useRouter } from "expo-router";
@@ -159,19 +166,23 @@ function PdfDocument({
 }) {
   if (!isReady) return <View className="bg-background flex-1" />;
   return (
-    <WormPdfView
-      onPageChange={({ nativeEvent }) => {
-        onPageChange(nativeEvent.pageNumber);
-        if (scope === "library") {
-          void saveReadingProgress(bookId, {
-            pdfPage: nativeEvent.pageNumber,
-          });
-        }
-      }}
-      pageNumber={initialPage}
-      sourceUri={sourceUri}
-      style={{ flex: 1 }}
-    />
+    <View className="bg-background flex-1">
+      <ReaderDocumentLayer active revealed>
+        <WormPdfView
+          onPageChange={({ nativeEvent }) => {
+            onPageChange(nativeEvent.pageNumber);
+            if (scope === "library") {
+              void saveReadingProgress(bookId, {
+                pdfPage: nativeEvent.pageNumber,
+              });
+            }
+          }}
+          pageNumber={initialPage}
+          sourceUri={sourceUri}
+          style={{ flex: 1 }}
+        />
+      </ReaderDocumentLayer>
+    </View>
   );
 }
 
@@ -205,9 +216,10 @@ function EpubReader({
   const [restoreProgress, setRestoreProgress] = useState(
     initialPosition.scrollProgress,
   );
-  const [initialRestoreComplete, setInitialRestoreComplete] = useState(
-    initialPosition.scrollProgress === 0,
+  const [revealedDocuments, setRevealedDocuments] = useState(
+    () => new Set<string>(),
   );
+  const [canMountDocuments, setCanMountDocuments] = useState(false);
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [chaptersVisible, setChaptersVisible] = useState(false);
   const [annotationsVisible, setAnnotationsVisible] = useState(false);
@@ -233,12 +245,17 @@ function EpubReader({
   });
   const themeKey = readerThemeKey({ background, foreground, muted });
   const documentKey = readerDocumentKey(book, scope, section?.id, themeKey);
-  const [initialDocumentKey] = useState(documentKey);
   const annotationQuery = useMemo(
     () => readerAnnotationsQuery(book.id),
     [book.id],
   );
   const annotations = useLiveQuery(annotationQuery).data;
+
+  // eslint-disable-next-line no-restricted-syntax -- Let the native route transition begin before mounting the comparatively expensive WebView tree.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setCanMountDocuments(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   // eslint-disable-next-line no-restricted-syntax -- Existing installs may contain duplicate annotations created before range deduplication.
   useEffect(() => {
@@ -250,6 +267,7 @@ function EpubReader({
       chapterWindowIndices(sectionIndex, sections.length, pendingSectionIndex),
     [pendingSectionIndex, sectionIndex, sections.length],
   );
+  const mountedIndices = canMountDocuments ? renderedIndices : [];
 
   // eslint-disable-next-line no-restricted-syntax -- EPUB rendering synchronizes an external archive session with the visible and prepared sections.
   useEffect(() => {
@@ -346,7 +364,7 @@ function EpubReader({
     <View className="flex-1">
       <View className="flex-1">
         {/* eslint-disable-next-line max-lines-per-function -- Each prepared WebView owns its native lifecycle callbacks. */}
-        {renderedIndices.map((index) => {
+        {mountedIndices.map((index) => {
           const renderedSection = sections[index];
           if (!renderedSection) return null;
           const key = readerDocumentKey(
@@ -367,7 +385,7 @@ function EpubReader({
               }
               key={key}
               pointerEvents={active ? "auto" : "none"}
-              revealed={key !== initialDocumentKey || initialRestoreComplete}
+              revealed={revealedDocuments.has(key)}
             >
               <WebView
                 ref={(instance) => {
@@ -416,9 +434,7 @@ function EpubReader({
                     nativeEvent.data === EPUB_RESTORE_COMPLETE_MESSAGE
                   ) {
                     isRestoring.current = false;
-                    if (key === initialDocumentKey) {
-                      setInitialRestoreComplete(true);
-                    }
+                    setRevealedDocuments((current) => addKey(current, key));
                     const annotationId = pendingAnnotationId.current;
                     if (annotationId) {
                       pendingAnnotationId.current = undefined;
@@ -729,19 +745,39 @@ function ReaderDocumentLayer({
   active,
   children,
   revealed,
+  style,
   ...viewProps
 }: React.ComponentProps<typeof View> & {
   active: boolean;
   revealed: boolean;
 }) {
+  const [opacity] = useState(() => new Animated.Value(0));
+
+  // eslint-disable-next-line no-restricted-syntax -- Native opacity follows the WebView's external load and position-restoration lifecycle.
+  useEffect(() => {
+    opacity.stopAnimation();
+    if (!active || !revealed) {
+      opacity.setValue(0);
+      return;
+    }
+    const animation = Animated.timing(opacity, {
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      toValue: 1,
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [active, opacity, revealed]);
+
   return (
-    <View
+    <Animated.View
       {...viewProps}
       className="absolute inset-0"
-      style={{ opacity: active && revealed ? 1 : 0 }}
+      style={[style, { opacity }]}
     >
       {children}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -752,6 +788,11 @@ function addDocument(
 ) {
   if (documents[key] === html) return documents;
   return { ...documents, [key]: html };
+}
+
+function addKey(keys: Set<string>, key: string) {
+  if (keys.has(key)) return keys;
+  return new Set([...keys, key]);
 }
 
 function ReaderBookDetails({

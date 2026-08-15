@@ -1,3 +1,4 @@
+import { InteractionManager } from "react-native";
 import { File } from "expo-file-system";
 
 import type { BookRecord, EpubReaderSession } from "@worm/ebook-core";
@@ -77,6 +78,27 @@ export function preloadEpubReadingPosition(
   }).then(() => undefined);
 }
 
+export function scheduleVisibleEpubPreloads(
+  books: BookRecord[],
+  theme: ReaderTheme,
+) {
+  queuedPreloads.clear();
+  for (const book of books) {
+    if (book.format !== "epub") continue;
+    const key = `${book.id}:${book.modifiedAt}:${readerThemeKey(theme)}`;
+    queuedPreloads.set(key, { book, theme });
+  }
+  scheduleNextPreload();
+}
+
+export function cancelScheduledEpubPreloads() {
+  queuedPreloads.clear();
+  if (preloadDelay) clearTimeout(preloadDelay);
+  preloadDelay = undefined;
+  scheduledPreload?.cancel();
+  scheduledPreload = undefined;
+}
+
 export function readerDocumentKey(
   book: BookRecord,
   scope: BookScope,
@@ -124,6 +146,42 @@ function setBounded<T>(
   }
 }
 
+function scheduleNextPreload() {
+  if (preloadRunning || preloadDelay || scheduledPreload) return;
+  if (queuedPreloads.size === 0) return;
+  preloadDelay = setTimeout(() => {
+    preloadDelay = undefined;
+    scheduledPreload = InteractionManager.runAfterInteractions(() => {
+      scheduledPreload = undefined;
+      void runNextPreload();
+    });
+  }, 200);
+}
+
+async function runNextPreload() {
+  const queued = queuedPreloads.entries().next().value;
+  if (!queued) return;
+  const [key, preload] = queued;
+  queuedPreloads.delete(key);
+  preloadRunning = true;
+  try {
+    await preloadEpubReadingPosition(preload.book, preload.theme);
+  } catch {
+    // Reader loading owns user-visible errors; speculative work fails silently.
+  }
+  preloadRunning = false;
+  scheduleNextPreload();
+}
+
+interface QueuedPreload {
+  book: BookRecord;
+  theme: ReaderTheme;
+}
+
 const epubSessionCache = new Map<string, Promise<EpubReaderSession>>();
 const epubDocumentCache = new Map<string, Promise<string>>();
 const epubResolvedDocumentCache = new Map<string, string>();
+const queuedPreloads = new Map<string, QueuedPreload>();
+let preloadDelay: ReturnType<typeof setTimeout> | undefined;
+let preloadRunning = false;
+let scheduledPreload: { cancel: () => void } | undefined;

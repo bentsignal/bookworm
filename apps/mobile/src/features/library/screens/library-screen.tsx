@@ -1,7 +1,7 @@
 import type { ViewToken } from "react-native";
 import { useEffect } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 
 import type { BookRecord } from "@worm/ebook-core";
@@ -9,7 +9,10 @@ import type { BookRecord } from "@worm/ebook-core";
 import type { ReaderTheme } from "../epub-reader-cache";
 import { useColor } from "~/hooks/use-color";
 import { BookCover } from "../components/book-cover";
-import { preloadEpubReadingPosition } from "../epub-reader-cache";
+import {
+  cancelScheduledEpubPreloads,
+  scheduleVisibleEpubPreloads,
+} from "../epub-reader-cache";
 import { useLibrary } from "../library-context";
 
 export function LibraryScreen() {
@@ -47,12 +50,12 @@ function LibraryContent({
   }: {
     viewableItems: ViewToken<BookRecord>[];
   }) {
-    for (const token of viewableItems) {
-      if (!token.isViewable) continue;
-      void preloadEpubReadingPosition(token.item, readerTheme).catch(
-        () => undefined,
-      );
-    }
+    scheduleVisibleEpubPreloads(
+      viewableItems
+        .filter((token) => token.isViewable)
+        .map((token) => token.item),
+      readerTheme,
+    );
   }
 
   // eslint-disable-next-line no-restricted-syntax -- Route prefetch synchronizes Expo Router's native navigation cache with the visible library.
@@ -64,6 +67,10 @@ function LibraryContent({
       params: { id: firstBook.id },
     });
   }, [books, router]);
+
+  useFocusEffect(function cancelPreloadsWhenLibraryBlurs() {
+    return cancelScheduledEpubPreloads;
+  });
 
   if (isReady && books.length === 0) {
     return <EmptyLibrary />;
@@ -89,21 +96,11 @@ const libraryViewabilityConfig = { itemVisiblePercentThreshold: 20 };
 
 export function BookTile({ book }: { book: BookRecord }) {
   const router = useRouter();
-  const background = useColor("background");
-  const foreground = useColor("foreground");
-  const muted = useColor("border");
   return (
     <Pressable
       accessibilityLabel={`${book.title}, ${book.author ?? book.format}`}
       accessibilityRole="button"
       className="min-w-0 active:opacity-70"
-      onPressIn={() => {
-        void preloadEpubReadingPosition(book, {
-          background,
-          foreground,
-          muted,
-        }).catch(() => undefined);
-      }}
       onPress={() =>
         router.push({
           pathname: "/book/[id]/read",
