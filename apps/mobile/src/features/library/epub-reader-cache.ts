@@ -1,8 +1,8 @@
 import { InteractionManager } from "react-native";
 import { File } from "expo-file-system";
 
-import type { BookRecord, EpubReaderSession } from "@worm/ebook-core";
-import { createEpubReaderSession } from "@worm/ebook-core";
+import type { BookRecord, EpubReaderSession } from "@lib/ebook-core";
+import { createEpubReaderSession } from "@lib/ebook-core";
 
 import type { BookScope } from "~/db/catalog";
 import { getReadingProgress } from "~/db/catalog";

@@ -1,12 +1,12 @@
 {
-  "name": "@worm/mobile",
+  "name": "@lib/mobile",
   "private": true,
   "main": "index.ts",
   "scripts": {
     "clean": "git clean -xdf .cache .expo .turbo android ios node_modules",
-    "dev": "portless \"$(../../scripts/portless-app-name.sh mobile.worm)\" --lan node ../../scripts/expo-portless-bridge.mjs expo start",
-    "dev:android": "portless \"$(../../scripts/portless-app-name.sh mobile.worm)\" --lan node ../../scripts/expo-portless-bridge.mjs expo start --android",
-    "dev:ios": "portless \"$(../../scripts/portless-app-name.sh mobile.worm)\" --lan node ../../scripts/expo-portless-bridge.mjs expo start --ios",
+    "dev": "portless \"$(../../scripts/portless-app-name.sh mobile.lib)\" --lan node ../../scripts/expo-portless-bridge.mjs expo start",
+    "dev:android": "portless \"$(../../scripts/portless-app-name.sh mobile.lib)\" --lan node ../../scripts/expo-portless-bridge.mjs expo start --android",
+    "dev:ios": "portless \"$(../../scripts/portless-app-name.sh mobile.lib)\" --lan node ../../scripts/expo-portless-bridge.mjs expo start --ios",
     "android": "pnpm run dev:android",
     "ios": "pnpm run dev:ios",
     "db:generate": "drizzle-kit generate",
@@ -21,7 +21,7 @@
     "@expo/metro-runtime": "~57.0.10",
     "@expo/ui": "~57.0.11",
     "@legendapp/list": "^3.3.5",
-    "@worm/ebook-core": "workspace:*",
+    "@lib/ebook-core": "workspace:*",
     "drizzle-orm": "^0.44.5",
     "expo": "~57.0.13",
     "expo-build-properties": "~57.0.11",
@@ -56,18 +56,18 @@
     "uniwind": "catalog:"
   },
   "devDependencies": {
+    "@lib/eslint-config": "workspace:*",
+    "@lib/prettier-config": "workspace:*",
+    "@lib/tailwind-config": "workspace:*",
+    "@lib/tsconfig": "workspace:*",
     "@react-native/metro-config": "0.86.2",
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
-    "@worm/eslint-config": "workspace:*",
-    "@worm/prettier-config": "workspace:*",
-    "@worm/tailwind-config": "workspace:*",
-    "@worm/tsconfig": "workspace:*",
     "drizzle-kit": "^0.31.4",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
     "vitest": "^4.0.17"
   },
-  "prettier": "@worm/prettier-config"
+  "prettier": "@lib/prettier-config"
 }

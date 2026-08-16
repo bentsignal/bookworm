@@ -25,7 +25,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 
-import type { BookSection } from "@worm/ebook-core";
+import type { BookSection } from "@lib/ebook-core";
 
 import { useAppColorScheme } from "~/features/theme/app-appearance";
 import { useColor } from "~/hooks/use-color";

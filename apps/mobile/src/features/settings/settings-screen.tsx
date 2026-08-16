@@ -19,23 +19,19 @@ import {
   useAppTheme,
 } from "~/features/theme/app-appearance";
 import { useColor } from "~/hooks/use-color";
-import iconClay from "../../../assets/icons/icon-clay.png";
-import iconDark from "../../../assets/icons/icon-dark.png";
-import iconForest from "../../../assets/icons/icon-forest.png";
-import iconLight from "../../../assets/icons/icon-light.png";
-import iconNavy from "../../../assets/icons/icon-navy.png";
-import iconPaper from "../../../assets/icons/icon-paper.png";
-import iconPlum from "../../../assets/icons/icon-plum.png";
+import iconClay from "../../../assets/icons/sources/clay-light.png";
+import iconForest from "../../../assets/icons/sources/forest-light.png";
+import iconInk from "../../../assets/icons/sources/ink-light.png";
+import iconPaper from "../../../assets/icons/sources/paper-light.png";
+import iconPlum from "../../../assets/icons/sources/plum-light.png";
 
 const appIcons = [
   { image: iconPaper, label: "Paper", nativeName: "IconPaper" },
   { image: iconForest, label: "Forest", nativeName: "IconForest" },
-  { image: iconNavy, label: "Ink", nativeName: "IconNavy" },
+  { image: iconInk, label: "Ink", nativeName: "IconInk" },
   { image: iconClay, label: "Clay", nativeName: "IconClay" },
   { image: iconPlum, label: "Plum", nativeName: "IconPlum" },
-  { image: iconLight, label: "Light", nativeName: "IconLight" },
-  { image: iconDark, label: "Dark", nativeName: "IconDark" },
-];
+] as const;
 
 const themeRank = {
   paper: 0,
@@ -61,9 +57,59 @@ export function SettingsScreen() {
       <AppIconPicker />
       <StorageSettings />
       <Text className="text-muted-foreground mt-10 text-center text-xs">
-        bookworm 0.1.31
+        lib 0.1.31
       </Text>
     </ScrollView>
+  );
+}
+
+function AppIconPicker() {
+  const border = useColor("border");
+  const foreground = useColor("foreground");
+  const [iconName, setIconName] = useState(() =>
+    Platform.OS === "ios" ? getAppIcon() : "default",
+  );
+  const selectedIcon = iconName === "default" ? "IconPaper" : iconName;
+
+  if (Platform.OS !== "ios") return null;
+
+  return (
+    <>
+      <SettingsHeading className="mt-8">App icon</SettingsHeading>
+      <ScrollView
+        horizontal
+        contentContainerClassName="gap-4 px-5 py-2"
+        showsHorizontalScrollIndicator={false}
+      >
+        {appIcons.map((item) => {
+          const selected = item.nativeName === selectedIcon;
+          return (
+            <Pressable
+              accessibilityLabel={`${item.label} app icon`}
+              accessibilityRole="button"
+              className="items-center gap-2 active:opacity-75"
+              key={item.nativeName}
+              onPress={() => changeIcon(item.nativeName, setIconName)}
+            >
+              <Image
+                className="h-[68px] w-[68px] rounded-[16px]"
+                source={item.image}
+                style={{
+                  borderColor: selected ? foreground : border,
+                  borderWidth: selected ? 3 : 1,
+                }}
+              />
+              <Text className="text-muted-foreground text-xs">
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      <Text className="text-muted-foreground mt-2 px-6 text-sm leading-5">
+        Every icon follows the Home Screen’s light, dark, and tinted appearance.
+      </Text>
+    </>
   );
 }
 
@@ -136,45 +182,6 @@ function ThemeCheck({ color, selected }: { color: string; selected: boolean }) {
   );
 }
 
-function AppIconPicker() {
-  const border = useColor("border");
-  const foreground = useColor("foreground");
-  const [iconName, setIconName] = useState(() => getAppIcon());
-  const selectedIcon =
-    iconName === "default" || iconName === "DEFAULT" ? "IconPaper" : iconName;
-  return (
-    <>
-      <SettingsHeading className="mt-8">App icon</SettingsHeading>
-      <ScrollView
-        horizontal
-        contentContainerClassName="gap-4 px-5 py-2"
-        showsHorizontalScrollIndicator={false}
-      >
-        {appIcons.map((item) => (
-          <Pressable
-            accessibilityLabel={`${item.label} app icon`}
-            accessibilityRole="button"
-            key={item.nativeName}
-            className="items-center gap-2 active:opacity-75"
-            onPress={() => changeIcon(item.nativeName, setIconName)}
-          >
-            <Image
-              className="h-[68px] w-[68px] rounded-[16px]"
-              source={item.image}
-              style={{
-                borderColor:
-                  item.nativeName === selectedIcon ? foreground : border,
-                borderWidth: item.nativeName === selectedIcon ? 3 : 1,
-              }}
-            />
-            <Text className="text-muted-foreground text-xs">{item.label}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-    </>
-  );
-}
-
 function StorageSettings() {
   return (
     <>
@@ -186,16 +193,12 @@ function StorageSettings() {
               Files access
             </Text>
             <Text className="text-muted-foreground mt-1 text-sm leading-5">
-              On My iPhone › bookworm › Library
+              On My iPhone › lib › Library
             </Text>
           </View>
           <View className="bg-primary h-2.5 w-2.5 rounded-full" />
         </View>
       </View>
-      <Text className="text-muted-foreground mt-3 px-6 text-sm leading-5">
-        Originals and generated editions stay visible in Files. bookworm never
-        overwrites an original.
-      </Text>
     </>
   );
 }
@@ -217,7 +220,6 @@ function SettingsHeading({
 }
 
 function changeIcon(nativeName: string, setIconName: (name: string) => void) {
-  if (Platform.OS !== "ios") return;
   try {
     setAppIcon(nativeName);
     setIconName(nativeName);

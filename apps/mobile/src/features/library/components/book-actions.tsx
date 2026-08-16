@@ -65,12 +65,12 @@ export function BookActions({
         {exportCaption(exportedUri)}
       </Text>
       <Pressable
-        accessibilityLabel="Remove from bookworm"
+        accessibilityLabel="Remove from lib"
         accessibilityRole="button"
         className="mt-9 items-center py-3"
         onPress={onDelete}
       >
-        <Text className="text-accent text-[15px]">Remove from bookworm</Text>
+        <Text className="text-accent text-[15px]">Remove from lib</Text>
       </Pressable>
     </>
   );

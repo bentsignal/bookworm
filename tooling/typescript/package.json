@@ -1,5 +1,5 @@
 {
-  "name": "@worm/tsconfig",
+  "name": "@lib/tsconfig",
   "private": true,
   "files": [
     "*.json"

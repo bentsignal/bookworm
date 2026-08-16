@@ -2,27 +2,27 @@ import type { ConfigContext, ExpoConfig } from "expo/config";
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: "bookworm",
-  slug: "worm",
+  name: "lib",
+  slug: "lib",
   owner: "directedbyshawn",
-  scheme: "worm",
+  scheme: "lib",
   version: "0.1.31",
   orientation: "portrait",
-  icon: "./assets/icons/icon-paper.png",
+  icon: "./assets/icon.png",
   userInterfaceStyle: "automatic",
   updates: { fallbackToCacheTimeout: 0 },
   assetBundlePatterns: ["**/*"],
   extra: {
     ...config.extra,
     eas: {
-      projectId: "728438a5-9760-4732-8606-e659fc60614c",
+      projectId: "3b1e9a0d-2881-414e-ad00-40ce380c8d6b",
     },
   },
   ios: {
-    buildNumber: "33",
-    bundleIdentifier: "com.bentsignal.worm",
+    buildNumber: "35",
+    bundleIdentifier: "com.bentsignal.lib",
     supportsTablet: true,
-    icon: "./assets/icons/icon-paper.png",
+    icon: "./assets/icons/lib.icon",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       LSApplicationQueriesSchemes: ["com.openai.chat"],
@@ -31,11 +31,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
-    versionCode: 33,
-    package: "com.bentsignal.worm",
+    versionCode: 35,
+    package: "com.bentsignal.lib",
+    icon: "./assets/icon.png",
     adaptiveIcon: {
-      backgroundColor: "#eee5d3",
-      foregroundImage: "./assets/icons/icon-paper.png",
+      backgroundColor: "#111316",
+      foregroundImage: "./assets/icon.png",
     },
   },
   experiments: {
@@ -45,20 +46,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
-    [
-      "./expo-plugins/with-ios-alternate-icons.cjs",
-      {
-        icons: [
-          { name: "IconForest", path: "./assets/icons/icon-forest.png" },
-          { name: "IconNavy", path: "./assets/icons/icon-navy.png" },
-          { name: "IconClay", path: "./assets/icons/icon-clay.png" },
-          { name: "IconPlum", path: "./assets/icons/icon-plum.png" },
-          { name: "IconLight", path: "./assets/icons/icon-light.png" },
-          { name: "IconDark", path: "./assets/icons/icon-dark.png" },
-          { name: "IconPaper", path: "./assets/icons/icon-paper.png" },
-        ],
-      },
-    ],
     [
       "expo-file-system",
       {
@@ -70,6 +57,33 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-font",
     "expo-sharing",
     "expo-status-bar",
+    [
+      "./expo-plugins/with-ios-alternate-icons.cjs",
+      {
+        icons: [
+          {
+            name: "IconPaper",
+            path: "./assets/icons/IconPaper.icon",
+          },
+          {
+            name: "IconForest",
+            path: "./assets/icons/IconForest.icon",
+          },
+          {
+            name: "IconInk",
+            path: "./assets/icons/IconInk.icon",
+          },
+          {
+            name: "IconClay",
+            path: "./assets/icons/IconClay.icon",
+          },
+          {
+            name: "IconPlum",
+            path: "./assets/icons/IconPlum.icon",
+          },
+        ],
+      },
+    ],
     [
       "expo-build-properties",
       {

@@ -1,6 +1,6 @@
 import { Image, Text, View } from "react-native";
 
-import type { BookRecord } from "@worm/ebook-core";
+import type { BookRecord } from "@lib/ebook-core";
 
 import type { BookScope } from "~/db/catalog";
 import { getCoverFile } from "../library-storage";

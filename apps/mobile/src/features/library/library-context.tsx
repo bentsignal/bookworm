@@ -8,12 +8,12 @@ import * as Sharing from "expo-sharing";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { createStore } from "rostra";
 
-import type { BookRecord } from "@worm/ebook-core";
+import type { BookRecord } from "@lib/ebook-core";
 import {
   buildEpubEdition,
   buildEpubFromPdf,
   buildPdfEdition,
-} from "@worm/ebook-core";
+} from "@lib/ebook-core";
 
 import type { PendingBookImport } from "./import-book-files";
 import type { BookScope } from "~/db/catalog";
@@ -25,7 +25,7 @@ import {
   removeStoredBook,
   updateStoredBook,
 } from "~/db/catalog";
-import { extractPdfTextAsync } from "~/native/worm-pdf";
+import { extractPdfTextAsync } from "~/native/lib-pdf";
 import { stagePickedBooks } from "./import-book-files";
 import {
   getLibraryActivity,

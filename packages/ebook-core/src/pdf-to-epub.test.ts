@@ -15,7 +15,7 @@ describe("PDF to EPUB conversion", () => {
       {
         identifier: "pdf-book",
         title: "A Converted Book",
-        author: "Worm Reader",
+        author: "Lib Reader",
         modifiedAt: "2026-08-10T18:24:30.000Z",
         sections: [
           {
@@ -43,7 +43,7 @@ describe("PDF to EPUB conversion", () => {
 
     expect(analysis).toMatchObject({
       title: "A Converted Book",
-      author: "Worm Reader",
+      author: "Lib Reader",
       format: "epub",
     });
     expect(analysis.sections.map(({ title }) => title)).toEqual([

@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 
-import type { BookRecord } from "@worm/ebook-core";
+import type { BookRecord } from "@lib/ebook-core";
 
 import type { PendingBookImport } from "../import-book-files";
 import { useColor } from "~/hooks/use-color";

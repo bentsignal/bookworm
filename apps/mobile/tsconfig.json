@@ -1,5 +1,5 @@
 {
-  "extends": ["@worm/tsconfig/base.json"],
+  "extends": ["@lib/tsconfig/base.json"],
   "compilerOptions": {
     "jsx": "react-native",
     "checkJs": false,

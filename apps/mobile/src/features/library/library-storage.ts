@@ -4,13 +4,13 @@ import type {
   BookAnalysis,
   BookRecord,
   ExtractedEpubCover,
-} from "@worm/ebook-core";
+} from "@lib/ebook-core";
 import {
   analyzeBook,
   createEditionFileName,
   EPUB_STRUCTURE_VERSION,
   extractEpubCover,
-} from "@worm/ebook-core";
+} from "@lib/ebook-core";
 
 import type { BookScope } from "~/db/catalog";
 

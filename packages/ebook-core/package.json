@@ -1,5 +1,5 @@
 {
-  "name": "@worm/ebook-core",
+  "name": "@lib/ebook-core",
   "private": true,
   "type": "module",
   "exports": {
@@ -21,13 +21,13 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@worm/eslint-config": "workspace:*",
-    "@worm/prettier-config": "workspace:*",
-    "@worm/tsconfig": "workspace:*",
+    "@lib/eslint-config": "workspace:*",
+    "@lib/prettier-config": "workspace:*",
+    "@lib/tsconfig": "workspace:*",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
     "vitest": "^4.0.17"
   },
-  "prettier": "@worm/prettier-config"
+  "prettier": "@lib/prettier-config"
 }

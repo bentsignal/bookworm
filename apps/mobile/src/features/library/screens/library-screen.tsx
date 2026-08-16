@@ -4,7 +4,7 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 
-import type { BookRecord } from "@worm/ebook-core";
+import type { BookRecord } from "@lib/ebook-core";
 
 import type { ReaderTheme } from "../epub-reader-cache";
 import { useColor } from "~/hooks/use-color";

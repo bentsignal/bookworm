@@ -64,7 +64,7 @@ describe("book model", () => {
 
   it("creates safe edition filenames", () => {
     expect(createEditionFileName("A Wizard of Earthsea", "pdf")).toBe(
-      "a-wizard-of-earthsea-worm-edition.pdf",
+      "a-wizard-of-earthsea-lib-edition.pdf",
     );
   });
 });

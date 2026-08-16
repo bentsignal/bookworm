@@ -1,7 +1,7 @@
 import { defineConfig } from "eslint/config";
 
-import { baseConfig, strictConfig } from "@worm/eslint-config/base";
-import { createStrictSyntax } from "@worm/eslint-config/syntax";
+import { baseConfig, strictConfig } from "@lib/eslint-config/base";
+import { createStrictSyntax } from "@lib/eslint-config/syntax";
 
 export default defineConfig(
   baseConfig,

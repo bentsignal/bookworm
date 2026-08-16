@@ -1,5 +1,5 @@
 {
-  "name": "worm",
+  "name": "lib",
   "description": "A calm, local-first workshop for your ebook library.",
   "private": true,
   "engines": {
@@ -22,15 +22,15 @@
     "lint:ws": "pnpm dlx sherif@latest",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "ios": "pnpm --filter @worm/mobile ios",
-    "android": "pnpm --filter @worm/mobile android"
+    "ios": "pnpm --filter @lib/mobile ios",
+    "android": "pnpm --filter @lib/mobile android"
   },
   "devDependencies": {
-    "@worm/prettier-config": "workspace:*",
+    "@lib/prettier-config": "workspace:*",
     "portless": "catalog:",
     "prettier": "catalog:",
     "turbo": "^2.5.8",
     "typescript": "catalog:"
   },
-  "prettier": "@worm/prettier-config"
+  "prettier": "@lib/prettier-config"
 }

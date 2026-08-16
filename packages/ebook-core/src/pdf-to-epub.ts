@@ -28,7 +28,7 @@ export async function buildEpubFromPdf(
   }
   if (!chapters.some((chapter) => chapter.hasText)) {
     throw new Error(
-      "This PDF has no readable text. bookworm can convert text-based PDFs; scanned pages will need OCR support.",
+      "This PDF has no readable text. lib can convert text-based PDFs; scanned pages will need OCR support.",
     );
   }
 
@@ -155,7 +155,7 @@ function packageDocument(
   return `<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" unique-identifier="book-id" version="3.0">
   <metadata>
-    <dc:identifier id="book-id">urn:bookworm:${escapeXml(edition.identifier)}</dc:identifier>
+    <dc:identifier id="book-id">urn:lib:${escapeXml(edition.identifier)}</dc:identifier>
     <dc:title>${escapeXml(edition.title)}</dc:title>
     ${author ? `<dc:creator>${escapeXml(author)}</dc:creator>` : ""}
     <dc:language>en</dc:language>

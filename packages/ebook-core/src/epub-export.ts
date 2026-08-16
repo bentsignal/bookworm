@@ -73,7 +73,7 @@ export async function buildEpubEdition(
   nextPackageXml = replaceCreator(nextPackageXml, edition.author);
   nextPackageXml = replaceModifiedDate(nextPackageXml, edition.modifiedAt);
   if (cover) {
-    const coverName = `bookworm-cover.${safeExtension(cover.extension)}`;
+    const coverName = `lib-cover.${safeExtension(cover.extension)}`;
     archive.file(normalizeHref(rootFile, coverName), cover.bytes);
     nextPackageXml = replaceCoverMetadata(nextPackageXml, coverName);
   }
@@ -106,12 +106,12 @@ function replaceCoverMetadata(packageXml: string, coverName: string) {
     },
   );
   const mediaType = imageMediaType(coverName);
-  const coverItem = `<item id="bookworm-cover" href="${coverName}" media-type="${mediaType}" properties="cover-image" />`;
+  const coverItem = `<item id="lib-cover" href="${coverName}" media-type="${mediaType}" properties="cover-image" />`;
   const withItem = withoutCoverProperties.replace(
     /<\/(?:[\w.-]+:)?manifest\s*>/iu,
     `  ${coverItem}\n$&`,
   );
-  const meta = '<meta name="cover" content="bookworm-cover" />';
+  const meta = '<meta name="cover" content="lib-cover" />';
   const metaPattern =
     /<(?:[\w.-]+:)?meta\b[^>]*\bname=["']cover["'][^>]*\/?>/iu;
   if (metaPattern.test(withItem)) return withItem.replace(metaPattern, meta);

@@ -1,4 +1,4 @@
-import type { BookSection } from "@worm/ebook-core";
+import type { BookSection } from "@lib/ebook-core";
 
 export interface SectionOrganizerProps {
   onChange: (sections: BookSection[]) => void;

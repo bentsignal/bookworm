@@ -1,0 +1,4 @@
+interface:
+  display_name: "lib Expo Build"
+  short_description: "Build and test lib through local EAS"
+  default_prompt: "Use $lib-expo-build to build and test the lib Expo development client locally."

@@ -57,10 +57,10 @@ describe("reader annotations", () => {
   });
 
   it("builds scripts that capture and repaint stable text offsets", () => {
-    expect(readerSelectionScript("highlight")).toContain("worm-reader-content");
+    expect(readerSelectionScript("highlight")).toContain("lib-reader-content");
     const observerScript = readerSelectionObserverScript();
     expect(observerScript).toContain("selectionchange");
-    expect(observerScript).toContain('mark[data-worm-kind="highlight"]');
+    expect(observerScript).toContain('mark[data-lib-kind="highlight"]');
     const script = applyReaderAnnotationsScript([
       {
         bookId: "book",
@@ -77,6 +77,6 @@ describe("reader annotations", () => {
     ]);
 
     expect(script).toContain('"id":"saved"');
-    expect(script).toContain("data-worm-annotation");
+    expect(script).toContain("data-lib-annotation");
   });
 });

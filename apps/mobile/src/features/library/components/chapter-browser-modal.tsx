@@ -2,7 +2,7 @@ import { FlatList, Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SymbolView } from "expo-symbols";
 
-import type { BookSection } from "@worm/ebook-core";
+import type { BookSection } from "@lib/ebook-core";
 
 import { useColor } from "~/hooks/use-color";
 

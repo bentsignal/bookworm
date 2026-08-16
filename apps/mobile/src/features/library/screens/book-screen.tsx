@@ -3,7 +3,7 @@ import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Redirect, Stack, useRouter } from "expo-router";
 
-import type { BookRecord, BookSection } from "@worm/ebook-core";
+import type { BookRecord, BookSection } from "@lib/ebook-core";
 
 import type { BookScope } from "~/db/catalog";
 import { BookActions, ReadButton } from "../components/book-actions";
@@ -333,7 +333,7 @@ function confirmDelete(
 ) {
   Alert.alert(
     "Remove this book?",
-    "Its bookworm copy and generated editions will be deleted.",
+    "Its lib copy and generated editions will be deleted.",
     [
       { text: "Cancel", style: "cancel" },
       {

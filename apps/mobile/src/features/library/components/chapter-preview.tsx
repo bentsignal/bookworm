@@ -3,11 +3,11 @@ import { useEffect, useRef } from "react";
 import { Pressable, Text, View } from "react-native";
 import { LegendList } from "@legendapp/list/react-native";
 
-import type { BookRecord, EpubLocation } from "@worm/ebook-core";
-import { normalizeEpubWhitespace } from "@worm/ebook-core";
+import type { BookRecord, EpubLocation } from "@lib/ebook-core";
+import { normalizeEpubWhitespace } from "@lib/ebook-core";
 
 import type { BookScope } from "~/db/catalog";
-import { WormPdfView } from "~/native/worm-pdf";
+import { LibPdfView } from "~/native/lib-pdf";
 import { getSourceFile } from "../library-storage";
 
 export function ChapterPreview({
@@ -23,7 +23,7 @@ export function ChapterPreview({
 }) {
   if (book.format === "pdf") {
     return (
-      <WormPdfView
+      <LibPdfView
         displayMode="continuous"
         pageNumber={selected}
         sourceUri={getSourceFile(book, scope).uri}

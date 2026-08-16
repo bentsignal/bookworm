@@ -3,7 +3,7 @@ import { FlatList, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 
-import type { BookRecord } from "@worm/ebook-core";
+import type { BookRecord } from "@lib/ebook-core";
 
 import { useLibrary } from "../library-context";
 import {

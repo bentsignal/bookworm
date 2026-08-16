@@ -105,5 +105,5 @@ export function createEditionFileName(title: string, format: BookFormat) {
     .replaceAll(/[^\p{L}\p{N}]+/gu, "-")
     .replaceAll(/^-|-$/gu, "")
     .toLowerCase();
-  return `${safeTitle || "untitled"}-worm-edition.${format}`;
+  return `${safeTitle || "untitled"}-lib-edition.${format}`;
 }

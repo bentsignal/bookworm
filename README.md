@@ -1,6 +1,6 @@
-# bookworm
+# lib
 
-bookworm is a calm, local-first workshop for a personal ebook library. Import EPUB
+lib is a calm, local-first workshop for a personal ebook library. Import EPUB
 and PDF files, rebuild their reading order, and export clean copies for an
 e-reader.
 
@@ -16,10 +16,10 @@ pnpm install
 pnpm ios
 ```
 
-Metro runs through the stable Portless origin `https://mobile.worm.local`.
+Metro runs through the stable Portless origin `https://mobile.lib.local`.
 
 ## File ownership
 
-bookworm is local-first. On iOS, its Documents directory is exposed in Files as the
-bookworm folder. Imported originals live under `Library/<book-id>/` and are never
+lib is local-first. On iOS, its Documents directory is exposed in Files as the
+lib folder. Imported originals live under `Library/<book-id>/` and are never
 overwritten; generated editions are written alongside them as new files.

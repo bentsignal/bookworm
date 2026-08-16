@@ -1,11 +1,11 @@
 import type { File } from "expo-file-system";
 
-import type { BookRecord } from "@worm/ebook-core";
-import { EPUB_STRUCTURE_VERSION, prepareBookImport } from "@worm/ebook-core";
+import type { BookRecord } from "@lib/ebook-core";
+import { EPUB_STRUCTURE_VERSION, prepareBookImport } from "@lib/ebook-core";
 
 import type { BookScope } from "~/db/catalog";
 import { insertBook, removeStoredBook } from "~/db/catalog";
-import { renderPdfPageAsync } from "~/native/worm-pdf";
+import { renderPdfPageAsync } from "~/native/lib-pdf";
 import {
   coverDestination,
   deleteStoredBookFiles,

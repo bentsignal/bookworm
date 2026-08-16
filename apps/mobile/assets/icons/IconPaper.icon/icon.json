@@ -1,0 +1,55 @@
+{
+  "fill": {
+    "automatic-gradient": "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "exec-03454d6c-0981-4a21-abc8-e2c07edd7a16.png",
+          "name": "Dark Artwork",
+          "opacity-specializations": [
+            {
+              "value": 0
+            },
+            {
+              "appearance": "dark",
+              "value": 1
+            },
+            {
+              "appearance": "tinted",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "image-name": "exec-0ef4e047-1b2d-4b02-8225-a835615e9461.png",
+          "name": "Light Artwork",
+          "opacity-specializations": [
+            {
+              "appearance": "dark",
+              "value": 0
+            },
+            {
+              "appearance": "tinted",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "name": "Artwork",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.6
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.2
+      }
+    }
+  ],
+  "supported-platforms": {
+    "circles": ["watchOS"],
+    "squares": "shared"
+  }
+}

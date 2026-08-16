@@ -27,7 +27,7 @@ export async function generateEpubChapters({
   const parent = rootFile.split("/").slice(0, -1).join("/");
   const chapters = new Array<GeneratedChapter>();
   for (const [index, section] of sections.entries()) {
-    const id = `bookworm-chapter-${index + 1}`;
+    const id = `lib-chapter-${index + 1}`;
     const fileName = `${id}.xhtml`;
     const path = parent ? `${parent}/${fileName}` : fileName;
     const markup = await renderEpubSection(archive, section, locations);

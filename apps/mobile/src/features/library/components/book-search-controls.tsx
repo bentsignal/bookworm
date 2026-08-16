@@ -8,13 +8,13 @@ import {
 } from "react-native";
 import { SymbolView } from "expo-symbols";
 
-import type { BookRecord } from "@worm/ebook-core";
-import { normalizeEpubWhitespace } from "@worm/ebook-core";
+import type { BookRecord } from "@lib/ebook-core";
+import { normalizeEpubWhitespace } from "@lib/ebook-core";
 
 import type { BookSearchDocument } from "../book-search";
 import type { BookScope } from "~/db/catalog";
 import { useColor } from "~/hooks/use-color";
-import { extractPdfTextAsync } from "~/native/worm-pdf";
+import { extractPdfTextAsync } from "~/native/lib-pdf";
 import { findBookTextMatches, nextMatchIndex } from "../book-search";
 import { getSourceFile } from "../library-storage";
 

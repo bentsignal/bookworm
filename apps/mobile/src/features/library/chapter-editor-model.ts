@@ -1,5 +1,5 @@
-import type { BookRecord, BookSection } from "@worm/ebook-core";
-import { sectionLocationRange } from "@worm/ebook-core";
+import type { BookRecord, BookSection } from "@lib/ebook-core";
+import { sectionLocationRange } from "@lib/ebook-core";
 
 export function initialChapterRange(book: BookRecord, section: BookSection) {
   if (book.format === "pdf") {

@@ -82,7 +82,7 @@ export async function buildEpubBoundaryHtml(
     const location = locations[index];
     if (!location) return "";
     const selected = index === selectedIndex ? " selected" : "";
-    return `<section class="bookworm-boundary${selected}" data-location="${index + 1}">${content}</section>`;
+    return `<section class="lib-boundary${selected}" data-location="${index + 1}">${content}</section>`;
   });
   return readerDocument(blocks.join("\n"), theme);
 }
@@ -101,7 +101,7 @@ function readerDocument(markup: string, theme: ReaderTheme) {
 }
 
 function chapterMarkup(title: string, markup: string) {
-  return `<article><h1 class="worm-chapter-title">${escapeHtml(title)}</h1><div id="worm-reader-content">${markup}</div></article>`;
+  return `<article><h1 class="lib-chapter-title">${escapeHtml(title)}</h1><div id="lib-reader-content">${markup}</div></article>`;
 }
 
 function fallbackLocations(sections: BookSection[]) {
@@ -136,17 +136,17 @@ body {
   overflow-wrap: anywhere;
 }
 article + article { border-top: 1px solid ${theme.muted}; margin-top: 4rem; padding-top: 3rem; }
-.worm-chapter-title { font-size: 1.7em; line-height: 1.15; margin: 0 0 1.6em; }
+.lib-chapter-title { font-size: 1.7em; line-height: 1.15; margin: 0 0 1.6em; }
 h1, h2, h3, h4 { line-height: 1.2; }
 p { margin: 0 0 1.1em; }
 img, svg { height: auto; max-width: 100%; }
 a { color: inherit; text-decoration-color: ${theme.muted}; }
 table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
-mark[data-worm-annotation] { border-radius: 0.16em; color: inherit; padding: 0.05em 0; }
-mark[data-worm-kind="highlight"] { background: color-mix(in srgb, ${theme.background} 48%, #f6c344); }
-mark[data-worm-kind="note"] { background: color-mix(in srgb, ${theme.muted} 72%, #d7a6f5); }
-.bookworm-boundary { border-left: 3px solid transparent; margin: 0 -0.75rem; padding: 0.5rem 0.75rem; }
-.bookworm-boundary.selected { background: color-mix(in srgb, ${theme.muted} 24%, transparent); border-left-color: ${theme.foreground}; border-radius: 0.35rem; }
+mark[data-lib-annotation] { border-radius: 0.16em; color: inherit; padding: 0.05em 0; }
+mark[data-lib-kind="highlight"] { background: color-mix(in srgb, ${theme.background} 48%, #f6c344); }
+mark[data-lib-kind="note"] { background: color-mix(in srgb, ${theme.muted} 72%, #d7a6f5); }
+.lib-boundary { border-left: 3px solid transparent; margin: 0 -0.75rem; padding: 0.5rem 0.75rem; }
+.lib-boundary.selected { background: color-mix(in srgb, ${theme.muted} 24%, transparent); border-left-color: ${theme.foreground}; border-radius: 0.35rem; }
 `;
 }
 

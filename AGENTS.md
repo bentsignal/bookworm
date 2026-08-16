@@ -2,7 +2,7 @@
 
 ## Repository Summary
 
-Worm is a local-first ebook library and workshop. The Expo mobile app is the
+lib is a local-first ebook library and workshop. The Expo mobile app is the
 first client; format logic belongs in platform-neutral packages when practical.
 
 ## Product Rules

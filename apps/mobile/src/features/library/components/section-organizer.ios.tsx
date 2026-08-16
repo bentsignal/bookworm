@@ -16,8 +16,8 @@ import {
   tag,
 } from "@expo/ui/swift-ui/modifiers";
 
-import type { BookSection } from "@worm/ebook-core";
-import { removeSections, reorderSections } from "@worm/ebook-core";
+import type { BookSection } from "@lib/ebook-core";
+import { removeSections, reorderSections } from "@lib/ebook-core";
 
 import type { SectionOrganizerProps } from "./section-organizer.types";
 

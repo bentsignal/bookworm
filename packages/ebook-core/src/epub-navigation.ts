@@ -79,7 +79,7 @@ function rewriteNcx(
     .map((section, index) => {
       const source = relativeHref(navigationPath, section.href ?? "");
       const title = escapeXmlText(section.title);
-      return `    <navPoint id="worm-${index + 1}" playOrder="${index + 1}"><navLabel><text>${title}</text></navLabel><content src="${escapeXmlAttribute(source)}"/></navPoint>`;
+      return `    <navPoint id="lib-${index + 1}" playOrder="${index + 1}"><navLabel><text>${title}</text></navLabel><content src="${escapeXmlAttribute(source)}"/></navPoint>`;
     })
     .join("\n");
   return ncx.replace(pattern, `$1\n${points}\n  $2`);

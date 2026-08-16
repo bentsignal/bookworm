@@ -18,7 +18,7 @@ interface AppThemeDefinition {
   previewForeground: string;
 }
 
-const preferenceKey = "worm:app-theme";
+const preferenceKey = "lib:app-theme";
 const listeners = new Set<() => void>();
 
 export const appThemes = [

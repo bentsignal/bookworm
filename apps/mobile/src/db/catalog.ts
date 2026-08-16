@@ -1,6 +1,6 @@
 import { asc, desc, eq } from "drizzle-orm";
 
-import type { BookRecord, BookSection, EpubLocation } from "@worm/ebook-core";
+import type { BookRecord, BookSection, EpubLocation } from "@lib/ebook-core";
 
 import { db } from "./database";
 import {

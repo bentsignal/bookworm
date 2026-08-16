@@ -67,7 +67,7 @@ describe("EPUB workshop", () => {
     );
 
     expect(html).toContain('data-location="6"');
-    expect(html).toContain('class="bookworm-boundary selected"');
+    expect(html).toContain('class="lib-boundary selected"');
     expect(html).toContain("Second scene.");
     expect(html).toContain("First scene.");
   });
@@ -95,7 +95,7 @@ describe("EPUB workshop", () => {
     });
     const result = await JSZip.loadAsync(edition);
     const chapter = await result
-      .file("OPS/bookworm-chapter-1.xhtml")
+      .file("OPS/lib-chapter-1.xhtml")
       ?.async("string");
 
     expect(chapter).toContain("The Road Ahead");

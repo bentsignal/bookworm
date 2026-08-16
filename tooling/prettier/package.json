@@ -1,5 +1,5 @@
 {
-  "name": "@worm/prettier-config",
+  "name": "@lib/prettier-config",
   "private": true,
   "type": "module",
   "exports": {
@@ -17,8 +17,8 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@worm/tsconfig": "workspace:*",
+    "@lib/tsconfig": "workspace:*",
     "typescript": "catalog:"
   },
-  "prettier": "@worm/prettier-config"
+  "prettier": "@lib/prettier-config"
 }

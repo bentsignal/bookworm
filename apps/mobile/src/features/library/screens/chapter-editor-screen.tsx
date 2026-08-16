@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 
-import type { BookRecord, BookSection } from "@worm/ebook-core";
+import type { BookRecord, BookSection } from "@lib/ebook-core";
 
 import type { BookScope } from "~/db/catalog";
 import {

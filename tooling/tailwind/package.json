@@ -1,5 +1,5 @@
 {
-  "name": "@worm/tailwind-config",
+  "name": "@lib/tailwind-config",
   "private": true,
   "type": "module",
   "exports": {
@@ -20,12 +20,12 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@worm/eslint-config": "workspace:*",
-    "@worm/prettier-config": "workspace:*",
-    "@worm/tsconfig": "workspace:*",
+    "@lib/eslint-config": "workspace:*",
+    "@lib/prettier-config": "workspace:*",
+    "@lib/tsconfig": "workspace:*",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:"
   },
-  "prettier": "@worm/prettier-config"
+  "prettier": "@lib/prettier-config"
 }

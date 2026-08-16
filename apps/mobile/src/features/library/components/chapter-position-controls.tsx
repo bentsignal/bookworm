@@ -3,7 +3,7 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 import { Host, Slider } from "@expo/ui/swift-ui";
 
-import type { BookFormat } from "@worm/ebook-core";
+import type { BookFormat } from "@lib/ebook-core";
 
 import { useColor } from "~/hooks/use-color";
 

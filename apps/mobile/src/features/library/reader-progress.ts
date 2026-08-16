@@ -1,4 +1,4 @@
-import type { BookSection } from "@worm/ebook-core";
+import type { BookSection } from "@lib/ebook-core";
 
 interface SavedEpubPosition {
   scrollProgress: number;
@@ -65,7 +65,7 @@ export function epubScrollRestoreScript(progress: number) {
   })(); true;`;
 }
 
-export const EPUB_RESTORE_COMPLETE_MESSAGE = "bookworm:restore-complete";
+export const EPUB_RESTORE_COMPLETE_MESSAGE = "lib:restore-complete";
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.max(minimum, Math.min(maximum, value));

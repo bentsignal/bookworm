@@ -20,7 +20,7 @@ const xmlParser = new XMLParser({
 
 export async function analyzeBook(bytes: Uint8Array, fileName: string) {
   const format = getBookFormat(fileName);
-  if (!format) throw new Error("bookworm supports EPUB and PDF files.");
+  if (!format) throw new Error("lib supports EPUB and PDF files.");
   if (format === "pdf") return analyzePdf(bytes, fileName);
   const archive = await JSZip.loadAsync(bytes);
   return analyzeEpubArchive(archive, fileName);

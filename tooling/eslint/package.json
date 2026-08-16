@@ -1,5 +1,5 @@
 {
-  "name": "@worm/eslint-config",
+  "name": "@lib/eslint-config",
   "private": true,
   "type": "module",
   "exports": {
@@ -23,11 +23,11 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@worm/prettier-config": "workspace:*",
-    "@worm/tsconfig": "workspace:*",
+    "@lib/prettier-config": "workspace:*",
+    "@lib/tsconfig": "workspace:*",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:"
   },
-  "prettier": "@worm/prettier-config"
+  "prettier": "@lib/prettier-config"
 }

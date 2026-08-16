@@ -74,7 +74,7 @@ describe("EPUB location migration", () => {
     });
     const result = await JSZip.loadAsync(edition);
     const chapter = await result
-      .file("OPS/bookworm-chapter-1.xhtml")
+      .file("OPS/lib-chapter-1.xhtml")
       ?.async("string");
 
     expect(chapter).toContain("First paragraph.");

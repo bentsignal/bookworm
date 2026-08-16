@@ -25,17 +25,17 @@ export type ReaderAnnotationEvent =
 
 export function readerSelectionObserverScript() {
   return `(function () {
-    if (window.__wormSelectionObserver) return;
+    if (window.__libSelectionObserver) return;
     function publishSelectionState() {
-      window.clearTimeout(window.__wormSelectionTimer);
-      window.__wormSelectionTimer = window.setTimeout(function () {
-        var root = document.getElementById('worm-reader-content');
+      window.clearTimeout(window.__libSelectionTimer);
+      window.__libSelectionTimer = window.setTimeout(function () {
+        var root = document.getElementById('lib-reader-content');
         var selection = window.getSelection();
         var hasHighlight = false;
         if (root && selection && selection.rangeCount > 0 && !selection.isCollapsed) {
           var range = selection.getRangeAt(0);
           if (root.contains(range.commonAncestorContainer)) {
-            Array.prototype.some.call(root.querySelectorAll('mark[data-worm-kind="highlight"]'), function (mark) {
+            Array.prototype.some.call(root.querySelectorAll('mark[data-lib-kind="highlight"]'), function (mark) {
               if (!range.intersectsNode(mark)) return false;
               hasHighlight = true;
               return true;
@@ -49,7 +49,7 @@ export function readerSelectionObserverScript() {
       }, 0);
     }
     document.addEventListener('selectionchange', publishSelectionState);
-    window.__wormSelectionObserver = true;
+    window.__libSelectionObserver = true;
   })(); true;`;
 }
 
@@ -57,7 +57,7 @@ export function readerSelectionScript(
   action: "chatgpt" | "highlight" | "note" | "unhighlight",
 ) {
   return `(function () {
-    var root = document.getElementById('worm-reader-content');
+    var root = document.getElementById('lib-reader-content');
     var selection = window.getSelection();
     if (!root || !selection || selection.rangeCount === 0 || selection.isCollapsed) return;
     var range = selection.getRangeAt(0);
@@ -87,9 +87,9 @@ export function applyReaderAnnotationsScript(
     startOffset: annotation.startOffset,
   }));
   return `(function () {
-    var root = document.getElementById('worm-reader-content');
+    var root = document.getElementById('lib-reader-content');
     if (!root) return;
-    Array.prototype.forEach.call(root.querySelectorAll('mark[data-worm-annotation]'), function (mark) {
+    Array.prototype.forEach.call(root.querySelectorAll('mark[data-lib-annotation]'), function (mark) {
       mark.replaceWith(document.createTextNode(mark.textContent || ''));
     });
     root.normalize();
@@ -118,8 +118,8 @@ export function applyReaderAnnotationsScript(
         range.setStart(node, start);
         range.setEnd(node, end);
         var mark = document.createElement('mark');
-        mark.dataset.wormAnnotation = annotation.id;
-        mark.dataset.wormKind = annotation.kind;
+        mark.dataset.libAnnotation = annotation.id;
+        mark.dataset.libKind = annotation.kind;
         range.surroundContents(mark);
       });
     }
@@ -129,22 +129,22 @@ export function applyReaderAnnotationsScript(
       .sort(function (left, right) { return right.startOffset - left.startOffset; })
       .forEach(apply);
 
-    if (!window.__wormAnnotationListener) {
+    if (!window.__libAnnotationListener) {
       root.addEventListener('click', function (event) {
         var target = event.target && event.target.closest
-          ? event.target.closest('mark[data-worm-annotation]')
+          ? event.target.closest('mark[data-lib-annotation]')
           : null;
         if (!target) return;
         window.ReactNativeWebView.postMessage(JSON.stringify({
-          id: target.dataset.wormAnnotation,
+          id: target.dataset.libAnnotation,
           type: 'annotation-press'
         }));
       });
-      window.__wormAnnotationListener = true;
+      window.__libAnnotationListener = true;
     }
     var requested = ${JSON.stringify(scrollToId)};
     if (requested) {
-      var target = root.querySelector('mark[data-worm-annotation="' + requested + '"]');
+      var target = root.querySelector('mark[data-lib-annotation="' + requested + '"]');
       if (target) target.scrollIntoView({ block: 'center', behavior: 'instant' });
     }
   })(); true;`;

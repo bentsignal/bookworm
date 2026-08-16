@@ -16,7 +16,7 @@ import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 
-import type { BookRecord } from "@worm/ebook-core";
+import type { BookRecord } from "@lib/ebook-core";
 
 import type { ReaderSelectionMessage } from "../reader-annotations";
 import type {
@@ -35,7 +35,7 @@ import {
   updateReaderAnnotationNote,
 } from "~/db/catalog";
 import { useColor } from "~/hooks/use-color";
-import { getPdfPageCountAsync, WormPdfView } from "~/native/worm-pdf";
+import { getPdfPageCountAsync, LibPdfView } from "~/native/lib-pdf";
 import { AnnotationBrowserModal } from "../components/annotation-browser-modal";
 import { AnnotationNoteModal } from "../components/annotation-note-modal";
 import { ChapterBrowserModal } from "../components/chapter-browser-modal";
@@ -171,7 +171,7 @@ function PdfDocument({
   return (
     <View className="bg-background flex-1">
       <ReaderDocumentLayer active revealed>
-        <WormPdfView
+        <LibPdfView
           onPageChange={({ nativeEvent }) => {
             onPageChange(nativeEvent.pageNumber);
             if (scope === "library") {
@@ -518,17 +518,17 @@ function EpubReader({
                     ? [
                         ...(scope === "library"
                           ? [
-                              { key: "wormHighlight", label: "Highlight" },
-                              { key: "wormNote", label: "Add Note" },
+                              { key: "libHighlight", label: "Highlight" },
+                              { key: "libNote", label: "Add Note" },
                             ]
                           : []),
                         ...(chatGptAvailable
-                          ? [{ key: "wormChatGPT", label: "Ask ChatGPT" }]
+                          ? [{ key: "libChatGPT", label: "Ask ChatGPT" }]
                           : []),
                         ...(selectionHasHighlight
                           ? [
                               {
-                                key: "wormUnhighlight",
+                                key: "libUnhighlight",
                                 label: "Remove Highlight",
                               },
                             ]
@@ -946,9 +946,9 @@ function ReaderNavigationButton({
 }
 
 function customMenuAction(key: string) {
-  if (key === "wormChatGPT") return "chatgpt" as const;
-  if (key === "wormNote") return "note" as const;
-  if (key === "wormUnhighlight") return "unhighlight" as const;
+  if (key === "libChatGPT") return "chatgpt" as const;
+  if (key === "libNote") return "note" as const;
+  if (key === "libUnhighlight") return "unhighlight" as const;
   return "highlight" as const;
 }
 

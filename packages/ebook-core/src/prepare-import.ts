@@ -6,7 +6,7 @@ import { getBookFormat } from "./model";
 
 export async function prepareBookImport(bytes: Uint8Array, fileName: string) {
   const format = getBookFormat(fileName);
-  if (!format) throw new Error("bookworm supports EPUB and PDF files.");
+  if (!format) throw new Error("lib supports EPUB and PDF files.");
   if (format === "pdf") {
     return { analysis: await analyzeBook(bytes, fileName) };
   }

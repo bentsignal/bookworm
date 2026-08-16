@@ -1,5 +1,5 @@
 {
-  "extends": "@worm/tsconfig/base.json",
+  "extends": "@lib/tsconfig/base.json",
   "include": ["."],
   "exclude": ["node_modules"]
 }

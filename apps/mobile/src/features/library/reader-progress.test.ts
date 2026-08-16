@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { BookSection } from "@worm/ebook-core";
+import type { BookSection } from "@lib/ebook-core";
 
 import {
   EPUB_RESTORE_COMPLETE_MESSAGE,

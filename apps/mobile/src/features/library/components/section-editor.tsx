@@ -1,7 +1,7 @@
 import { ActionSheetIOS, Pressable, Text, View } from "react-native";
 
-import type { BookFormat, BookSection, EpubLocation } from "@worm/ebook-core";
-import { sectionLocationRange } from "@worm/ebook-core";
+import type { BookFormat, BookSection, EpubLocation } from "@lib/ebook-core";
+import { sectionLocationRange } from "@lib/ebook-core";
 
 export function SectionEditor({
   format,
