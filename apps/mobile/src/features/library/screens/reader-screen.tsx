@@ -4,6 +4,8 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Linking,
+  Platform,
   Pressable,
   Text,
   View,
@@ -54,6 +56,7 @@ import {
   readerSelectionObserverScript,
   readerSelectionScript,
 } from "../reader-annotations";
+import { chatGptAppUrl, chatGptDraftUrl } from "../reader-chatgpt";
 import {
   EPUB_RESTORE_COMPLETE_MESSAGE,
   epubScrollRestoreScript,
@@ -227,6 +230,7 @@ function EpubReader({
   const [selectedAnnotation, setSelectedAnnotation] =
     useState<ReaderAnnotation>();
   const [selectionHasHighlight, setSelectionHasHighlight] = useState(false);
+  const [chatGptAvailable, setChatGptAvailable] = useState(false);
   const [pendingSectionIndex, setPendingSectionIndex] = useState<number>();
   const section = sections[sectionIndex];
   const sectionProgress = useRef(new Map<string, number>());
@@ -261,6 +265,22 @@ function EpubReader({
   useEffect(() => {
     if (scope === "library") removeDuplicateReaderAnnotations(book.id);
   }, [book.id, scope]);
+
+  // eslint-disable-next-line no-restricted-syntax -- ChatGPT is an optional external iOS app whose availability can change between installs.
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    let cancelled = false;
+    void Linking.canOpenURL(chatGptAppUrl())
+      .then((available) => {
+        if (!cancelled) setChatGptAvailable(available);
+      })
+      .catch(() => {
+        if (!cancelled) setChatGptAvailable(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const renderedIndices = useMemo(
     () =>
@@ -363,7 +383,7 @@ function EpubReader({
   return (
     <View className="flex-1">
       <View className="flex-1">
-        {/* eslint-disable-next-line max-lines-per-function -- Each prepared WebView owns its native lifecycle callbacks. */}
+        {/* eslint-disable-next-line complexity, max-lines-per-function -- Each prepared WebView owns its native lifecycle callbacks. */}
         {mountedIndices.map((index) => {
           const renderedSection = sections[index];
           if (!renderedSection) return null;
@@ -451,8 +471,9 @@ function EpubReader({
                     return;
                   }
                   const event = parseReaderAnnotationEvent(nativeEvent.data);
-                  if (!active || !event || scope !== "library") return;
+                  if (!active || !event) return;
                   if (event.type === "annotation-press") {
+                    if (scope !== "library") return;
                     const annotation = annotations.find(
                       (item) => item.id === event.id,
                     );
@@ -466,6 +487,17 @@ function EpubReader({
                     return;
                   }
                   if (!event.selectedText.trim()) return;
+                  if (event.action === "chatgpt") {
+                    void Linking.openURL(
+                      chatGptDraftUrl({
+                        author: book.author,
+                        selectedText: event.selectedText,
+                        title: book.title,
+                      }),
+                    ).catch(() => setChatGptAvailable(false));
+                    return;
+                  }
+                  if (scope !== "library") return;
                   if (event.action === "unhighlight") {
                     deleteReaderHighlightsInRange({
                       bookId: book.id,
@@ -482,10 +514,17 @@ function EpubReader({
                   saveAnnotation(event, "highlight");
                 }}
                 menuItems={
-                  active && scope === "library"
+                  active && (scope === "library" || chatGptAvailable)
                     ? [
-                        { key: "wormHighlight", label: "Highlight" },
-                        { key: "wormNote", label: "Add Note" },
+                        ...(scope === "library"
+                          ? [
+                              { key: "wormHighlight", label: "Highlight" },
+                              { key: "wormNote", label: "Add Note" },
+                            ]
+                          : []),
+                        ...(chatGptAvailable
+                          ? [{ key: "wormChatGPT", label: "Ask ChatGPT" }]
+                          : []),
                         ...(selectionHasHighlight
                           ? [
                               {
@@ -907,6 +946,7 @@ function ReaderNavigationButton({
 }
 
 function customMenuAction(key: string) {
+  if (key === "wormChatGPT") return "chatgpt" as const;
   if (key === "wormNote") return "note" as const;
   if (key === "wormUnhighlight") return "unhighlight" as const;
   return "highlight" as const;

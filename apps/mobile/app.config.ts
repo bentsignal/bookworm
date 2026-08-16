@@ -25,6 +25,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     icon: "./assets/icons/icon-paper.png",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      LSApplicationQueriesSchemes: ["com.openai.chat"],
       LSSupportsOpeningDocumentsInPlace: true,
       UIFileSharingEnabled: true,
     },

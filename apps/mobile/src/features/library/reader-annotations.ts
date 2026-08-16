@@ -1,7 +1,7 @@
 import type { ReaderAnnotation } from "~/db/catalog";
 
 export interface ReaderSelectionMessage {
-  action: "highlight" | "note" | "unhighlight";
+  action: "chatgpt" | "highlight" | "note" | "unhighlight";
   endOffset: number;
   selectedText: string;
   startOffset: number;
@@ -54,7 +54,7 @@ export function readerSelectionObserverScript() {
 }
 
 export function readerSelectionScript(
-  action: "highlight" | "note" | "unhighlight",
+  action: "chatgpt" | "highlight" | "note" | "unhighlight",
 ) {
   return `(function () {
     var root = document.getElementById('worm-reader-content');
@@ -181,7 +181,8 @@ export function parseReaderAnnotationEvent(value: string) {
     if (
       parsed.type === "selection" &&
       "action" in parsed &&
-      (parsed.action === "highlight" ||
+      (parsed.action === "chatgpt" ||
+        parsed.action === "highlight" ||
         parsed.action === "note" ||
         parsed.action === "unhighlight") &&
       "startOffset" in parsed &&

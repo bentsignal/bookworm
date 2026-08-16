@@ -26,6 +26,17 @@ describe("reader annotations", () => {
       startOffset: 3,
       type: "selection",
     });
+    expect(
+      parseReaderAnnotationEvent(
+        JSON.stringify({
+          action: "chatgpt",
+          endOffset: 12,
+          selectedText: "A passage",
+          startOffset: 3,
+          type: "selection",
+        }),
+      ),
+    ).toMatchObject({ action: "chatgpt", selectedText: "A passage" });
     expect(parseReaderAnnotationEvent('{"type":"selection"}')).toBeUndefined();
     expect(
       parseReaderAnnotationEvent(
