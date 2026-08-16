@@ -35,6 +35,7 @@ export function ImportListHeader({
         <Pressable
           accessibilityRole="button"
           className="border-border bg-card h-10 items-center justify-center rounded-full border px-4 active:opacity-70"
+          disabled={isAddingToLibrary}
           onPress={onChooseMore}
         >
           <Text className="text-primary text-sm font-semibold">

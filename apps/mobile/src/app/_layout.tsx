@@ -66,7 +66,13 @@ export default function RootLayout() {
                     name="(tabs)"
                     options={{ animation: "none", headerShown: false }}
                   />
-                  <Stack.Screen name="book/[id]/edit" options={{ title: "" }} />
+                  <Stack.Screen
+                    dangerouslySingular={(_, params) =>
+                      `${String(params.scope ?? "library")}:${String(params.id)}`
+                    }
+                    name="book/[id]/edit"
+                    options={{ title: "" }}
+                  />
                   <Stack.Screen name="book/[id]/read" />
                   <Stack.Screen name="book/[id]/section/[sectionId]" />
                 </Stack>

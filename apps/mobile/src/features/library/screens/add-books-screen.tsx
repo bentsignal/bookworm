@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-restricted-imports -- A stable focus callback prevents the file picker reopening during input rerenders.
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -31,6 +31,7 @@ export function AddBooksScreen() {
   const isImporting = useLibrary((store) => store.isImporting);
   const pendingImports = useLibrary((store) => store.pendingImports);
   const pickBookDrafts = useLibrary((store) => store.pickBookDrafts);
+  const [savingDrafts, setSavingDrafts] = useState<BookRecord[] | null>(null);
   const isPicking = useRef(false);
   const offeredPicker = useRef(false);
   const activityColor = useColor("primary");
@@ -57,19 +58,31 @@ export function AddBooksScreen() {
     }, [imports.length, pickBookDrafts]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      setSavingDrafts(null);
+    }, []),
+  );
+
   async function addToLibrary() {
-    if (!(await addBooksToLibrary())) return;
+    setSavingDrafts(imports);
+    if (!(await addBooksToLibrary())) {
+      setSavingDrafts(null);
+      return;
+    }
     offeredPicker.current = false;
     router.navigate("/(tabs)/(library)");
   }
 
+  const drafts = savingDrafts ?? imports;
+  const isSaving = savingDrafts !== null || isAddingToLibrary;
   const canAdd =
     imports.length > 0 &&
     imports.every(({ title }) => title.trim().length > 0) &&
-    !isAddingToLibrary &&
+    !isSaving &&
     !isImporting;
 
-  if (imports.length === 0) {
+  if (drafts.length === 0) {
     return (
       <View className="bg-background flex-1">
         <Stack.Screen options={{ headerShown: false }} />
@@ -86,8 +99,8 @@ export function AddBooksScreen() {
     <ImportDraftList
       activityColor={activityColor}
       canAdd={canAdd}
-      drafts={imports}
-      isAddingToLibrary={isAddingToLibrary}
+      drafts={drafts}
+      isAddingToLibrary={isSaving}
       onAdd={() => void addToLibrary()}
       onChooseMore={() => void chooseBooks()}
       onRemove={deleteImport}
