@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { ReaderSelectionMessage } from "../reader-annotations";
 import type { ReaderAnnotation } from "~/db/catalog";
 import { useColor } from "~/hooks/use-color";
+import { confirmDeleteNote } from "./confirm-delete-note";
 
 export function AnnotationNoteModal({
   annotation,
@@ -212,7 +213,7 @@ function DeleteNoteButton({
     <Pressable
       accessibilityRole="button"
       className="mt-8 h-11 items-center justify-center rounded-full active:opacity-75"
-      onPress={onDelete}
+      onPress={() => confirmDeleteNote(onDelete)}
       style={{ backgroundColor: muted }}
     >
       <Text className="text-sm font-semibold" style={{ color: accent }}>

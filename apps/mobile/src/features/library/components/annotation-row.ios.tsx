@@ -1,12 +1,14 @@
 import { Button, HStack, Image, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import {
   buttonStyle,
+  contentShape,
   font,
   foregroundStyle,
   lineLimit,
   listRowBackground,
   listRowInsets,
   listRowSeparator,
+  shapes,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 
@@ -40,7 +42,11 @@ export function NativeAnnotationRow({
       ]}
       onPress={onPress}
     >
-      <HStack alignment="center" spacing={12}>
+      <HStack
+        alignment="center"
+        modifiers={[contentShape(shapes.rectangle())]}
+        spacing={12}
+      >
         <VStack alignment="leading" spacing={5}>
           <Text
             modifiers={[

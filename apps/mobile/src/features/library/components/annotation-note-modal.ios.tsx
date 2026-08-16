@@ -30,6 +30,7 @@ import type { ReaderSelectionMessage } from "../reader-annotations";
 import type { ReaderAnnotation } from "~/db/catalog";
 import { useAppColorScheme } from "~/features/theme/app-appearance";
 import { useColor } from "~/hooks/use-color";
+import { confirmDeleteNote } from "./confirm-delete-note";
 
 export function AnnotationNoteModal({
   annotation,
@@ -292,7 +293,7 @@ function DeleteNoteButton({
         controlSize("large"),
         tint(accent),
       ]}
-      onPress={onDelete}
+      onPress={() => confirmDeleteNote(onDelete)}
       role="destructive"
     />
   );
