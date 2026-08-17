@@ -149,8 +149,9 @@ describe("EPUB reading", () => {
       { background: "#fff", foreground: "#111", muted: "#ccc" },
     );
 
-    expect(html.indexOf("The River")).toBeLessThan(html.indexOf("Arrival"));
-    expect(html).toContain("Two");
+    expect(html.indexOf("Two")).toBeLessThan(html.indexOf("One"));
+    expect(html).not.toContain("The River");
+    expect(html).not.toContain("Arrival");
     expect(html).toContain("data:image/png;base64,AQID");
     expect(html).toContain("default-src 'none'");
   });

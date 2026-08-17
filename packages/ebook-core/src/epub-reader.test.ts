@@ -7,7 +7,10 @@ import { createEpubReaderSession } from "./epub-reader";
 describe("createEpubReaderSession", () => {
   it("reuses an opened archive to render multiple sections", async () => {
     const archive = new JSZip();
-    archive.file("one.xhtml", "<html><body><p>First chapter</p></body></html>");
+    archive.file(
+      "one.xhtml",
+      "<html><body><h1>Publisher heading</h1><p>First chapter</p></body></html>",
+    );
     archive.file(
       "two.xhtml",
       "<html><body><p>Second chapter</p></body></html>",
@@ -17,7 +20,7 @@ describe("createEpubReaderSession", () => {
     );
     const locations = [location("one.xhtml", 0), location("two.xhtml", 1)];
     const first = await session.buildSectionHtml(
-      section("one", "one.xhtml", 0),
+      section("Metadata title", "one.xhtml", 0),
       locations,
       theme,
     );
@@ -28,6 +31,9 @@ describe("createEpubReaderSession", () => {
     );
 
     expect(first).toContain("First chapter");
+    expect(first).toContain("Publisher heading");
+    expect(first).not.toContain("Metadata title");
+    expect(first).not.toContain("lib-chapter-title");
     expect(first).toContain('id="lib-reader-content"');
     expect(second).toContain("Second chapter");
   });

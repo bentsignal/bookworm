@@ -10,16 +10,23 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Host, HStack, List, RNHostView } from "@expo/ui/swift-ui";
 import {
+  background as backgroundModifier,
   environment,
+  listRowBackground,
   listRowInsets,
+  listRowSeparatorTint,
   listStyle,
+  scrollContentBackground,
   tag,
+  tint,
 } from "@expo/ui/swift-ui/modifiers";
 
 import type { BookSection } from "@lib/ebook-core";
 import { removeSections, reorderSections } from "@lib/ebook-core";
 
 import type { SectionOrganizerProps } from "./section-organizer.types";
+import { useAppColorScheme } from "~/features/theme/app-appearance";
+import { useColor } from "~/hooks/use-color";
 
 export function SectionOrganizer({
   onChange,
@@ -27,6 +34,11 @@ export function SectionOrganizer({
 }: SectionOrganizerProps) {
   const [isVisible, setIsVisible] = useState(false);
   const insets = useSafeAreaInsets();
+  const background = useColor("background");
+  const border = useColor("border");
+  const card = useColor("card");
+  const primary = useColor("primary");
+  const colorScheme = useAppColorScheme();
 
   function handleMove(sourceIndices: number[], destination: number) {
     deferChange(
@@ -63,11 +75,18 @@ export function SectionOrganizer({
           style={{ paddingBottom: insets.bottom, paddingTop: insets.top }}
         >
           <OrganizerHeader onDone={() => setIsVisible(false)} />
-          <Host style={{ flex: 1 }}>
+          <Host
+            colorScheme={colorScheme}
+            seedColor={primary}
+            style={{ flex: 1 }}
+          >
             <List
               modifiers={[
                 environment("editMode", "active"),
                 listStyle("insetGrouped"),
+                scrollContentBackground("hidden"),
+                backgroundModifier(background),
+                tint(primary),
               ]}
             >
               <List.ForEach onDelete={handleDelete} onMove={handleMove}>
@@ -76,12 +95,14 @@ export function SectionOrganizer({
                     key={section.id}
                     modifiers={[
                       tag(section.id),
+                      listRowBackground(card),
                       listRowInsets({
                         bottom: 8,
                         leading: 16,
                         top: 8,
                         trailing: 16,
                       }),
+                      listRowSeparatorTint(border),
                     ]}
                   >
                     <RNHostView matchContents>
