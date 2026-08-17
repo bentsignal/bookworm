@@ -26,7 +26,7 @@ export async function createEpubReaderSession(source: Uint8Array) {
   return {
     async buildSectionHtml(section, locations, theme) {
       const markup = await renderEpubSection(archive, section, locations);
-      return readerDocument(chapterMarkup(section.title, markup), theme);
+      return readerDocument(chapterMarkup(markup), theme);
     },
   } satisfies EpubReaderSession;
 }
@@ -45,7 +45,7 @@ export async function buildEpubReaderHtml(
   const chapters = new Array<string>();
   for (const section of selected) {
     const markup = await renderEpubSection(archive, section, locations);
-    chapters.push(chapterMarkup(section.title, markup));
+    chapters.push(chapterMarkup(markup));
   }
   return readerDocument(chapters.join("\n"), theme);
 }
@@ -100,8 +100,8 @@ function readerDocument(markup: string, theme: ReaderTheme) {
 </html>`;
 }
 
-function chapterMarkup(title: string, markup: string) {
-  return `<article><h1 class="lib-chapter-title">${escapeHtml(title)}</h1><div id="lib-reader-content">${markup}</div></article>`;
+function chapterMarkup(markup: string) {
+  return `<article><div id="lib-reader-content">${markup}</div></article>`;
 }
 
 function fallbackLocations(sections: BookSection[]) {
@@ -136,7 +136,6 @@ body {
   overflow-wrap: anywhere;
 }
 article + article { border-top: 1px solid ${theme.muted}; margin-top: 4rem; padding-top: 3rem; }
-.lib-chapter-title { font-size: 1.7em; line-height: 1.15; margin: 0 0 1.6em; }
 h1, h2, h3, h4 { line-height: 1.2; }
 p { margin: 0 0 1.1em; }
 img, svg { height: auto; max-width: 100%; }
@@ -148,12 +147,4 @@ mark[data-lib-kind="note"] { background: color-mix(in srgb, ${theme.muted} 72%, 
 .lib-boundary { border-left: 3px solid transparent; margin: 0 -0.75rem; padding: 0.5rem 0.75rem; }
 .lib-boundary.selected { background: color-mix(in srgb, ${theme.muted} 24%, transparent); border-left-color: ${theme.foreground}; border-radius: 0.35rem; }
 `;
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
