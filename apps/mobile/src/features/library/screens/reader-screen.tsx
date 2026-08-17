@@ -900,7 +900,7 @@ function EpubNavigation({
           {title}
         </Text>
         <Text className="text-muted-foreground mt-0.5 text-[10px]">
-          Chapter {index + 1} of {count} · {progress}%
+          {progress}% complete
         </Text>
       </Pressable>
       <ReaderNavigationButton
